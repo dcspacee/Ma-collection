@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ma Collection - Gestion personnelle</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f6fb; color: #1a1a2e; display: flex; min-height: 100vh; }
+
+/* AUTH SCREEN */
+.auth-screen { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(135deg, #1a1a2e 0%, #4f6ef7 100%); display: flex; align-items: center; justify-content: center; z-index: 999; }
+.auth-screen.hidden { display: none; }
+.auth-container { background: #fff; padding: 2rem; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); max-width: 400px; width: 90%; }
+.auth-container h1 { margin-bottom: 1.5rem; color: #1a1a2e; text-align: center; }
+.auth-form { display: flex; flex-direction: column; gap: 1rem; }
+.auth-form input { padding: 12px 14px; border: 1.5px solid #e0e0e0; border-radius: 10px; font-size: 14px; transition: all 0.25s; }
+.auth-form input:focus { border-color: #4f6ef7; outline: none; box-shadow: 0 0 0 3px rgba(79,110,247,0.1); }
+.auth-form button { padding: 12px; background: linear-gradient(135deg, #1a1a2e 0%, #2d2d4e 100%); color: #fff; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; transition: all 0.25s; }
+.auth-form button:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(0,0,0,0.2); }
+.auth-toggle { text-align: center; margin-top: 1rem; font-size: 14px; color: #888; }
+.auth-toggle button { background: none; border: none; color: #4f6ef7; cursor: pointer; text-decoration: underline; }
+.auth-error { color: #d94040; font-size: 13px; text-align: center; min-height: 18px; }
+
+/* SIDEBAR */
+.sidebar { width: 220px; height: 100vh; background: linear-gradient(180deg, #1a1a2e 0%, #2d2d4e 100%); display: flex; flex-direction: column; padding: 2rem 1rem; position: fixed; top: 0; left: 0; z-index: 10; box-shadow: 2px 0 8px rgba(0,0,0,0.1); }
+.sidebar-logo { font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 2.5rem; padding: 0 0.5rem; }
+.sidebar-logo span { font-size: 11px; font-weight: 400; color: #a0a0c0; display: block; margin-top: 4px; letter-spacing: 0.5px; }
+.nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 10px; color: #a0a0c0; font-size: 14px; cursor: pointer; transition: all 0.25s; margin-bottom: 6px; border: none; background: none; width: 100%; text-align: left; }
+.nav-item:hover { background: rgba(255,255,255,0.08); color: #e0e0ff; }
+.nav-item.active { background: rgba(79,110,247,0.2); color: #fff; font-weight: 500; border-left: 3px solid #4f6ef7; padding-left: 11px; }
+.sidebar-user { margin-top: auto; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.1); font-size: 12px; color: #a0a0c0; word-break: break-all; }
+.sidebar-logout { background: rgba(217,64,64,0.2); color: #ff6b6b; padding: 8px 12px; border-radius: 8px; border: none; cursor: pointer; width: 100%; margin-top: 0.5rem; font-size: 12px; font-weight: 600; transition: all 0.25s; }
+.sidebar-logout:hover { background: rgba(217,64,64,0.3); }
+
+/* MAIN */
+.main { margin-left: 220px; flex: 1; display: flex; flex-direction: column; }
+.page { display: none; padding: 2.5rem; min-height: 100vh; overflow-y: auto; }
+.page.active { display: block; animation: fadeIn 0.3s ease; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.page-title { font-size: 24px; font-weight: 600; margin-bottom: 2rem; color: #1a1a2e; }
+
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 2rem; }
+.stat { background: #fff; padding: 1.5rem; border-radius: 14px; border: 1px solid #e8eaf0; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+.stat-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; margin-bottom: 8px; }
+.stat-value { font-size: 28px; font-weight: 700; color: #1a1a2e; }
+.stat-value.success { color: #1a9e5f; }
+.stat-value.danger { color: #d94040; }
+
+.charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 20px; margin-bottom: 2rem; }
+.chart-card { background: #fff; border-radius: 14px; border: 1px solid #e8eaf0; padding: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+.chart-card h3 { font-size: 15px; font-weight: 600; margin-bottom: 1.2rem; color: #1a1a2e; }
+.chart-card canvas { max-height: 260px; }
+
+.filter-section { background: #fff; border-radius: 14px; border: 1px solid #e8eaf0; padding: 1.5rem; margin-bottom: 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+.filter-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1.2rem; }
+.filter-group { display: flex; flex-direction: column; }
+.filter-group label { font-size: 11px; color: #888; text-transform: uppercase; margin-bottom: 8px; font-weight: 600; letter-spacing: 0.5px; }
+.filter-group select { font-size: 13px; border: 1px solid #e0e0e0; border-radius: 10px; padding: 10px 12px; background: #fff; color: #1a1a2e; outline: none; cursor: pointer; transition: all 0.25s; font-weight: 500; }
+.filter-group select:hover { border-color: #4f6ef7; }
+
+.table-section { background: #fff; border-radius: 14px; border: 1px solid #e8eaf0; box-shadow: 0 2px 8px rgba(0,0,0,0.04); overflow: hidden; margin-bottom: 2rem; }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+thead th { background: linear-gradient(180deg, #1a1a2e 0%, #2d2d4e 100%); color: #fff; padding: 14px 12px; text-align: left; font-weight: 600; font-size: 12px; letter-spacing: 0.3px; border-bottom: 2px solid #4f6ef7; }
+tbody tr { border-bottom: 1px solid #f5f5f8; transition: background 0.2s; }
+tbody tr:hover { background: #f8f9fd; }
+td { padding: 12px; vertical-align: middle; }
+td input, td select { font-size: 13px; font-family: inherit; }
+
+.buttons { display: flex; gap: 12px; margin-top: 1rem; flex-wrap: wrap; }
+.btn { padding: 11px 20px; border: none; border-radius: 10px; font-size: 13px; cursor: pointer; font-family: inherit; font-weight: 600; transition: all 0.25s; }
+.btn-add { background: linear-gradient(135deg, #1a1a2e 0%, #2d2d4e 100%); color: #fff; }
+.btn-add:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+.btn-export { background: linear-gradient(135deg, #1a9e5f 0%, #147a49 100%); color: #fff; }
+.btn-export:hover { transform: translateY(-2px); }
+.btn-import { background: #fff; border: 1.5px solid #e0e0e0; color: #1a1a2e; display: inline-flex; align-items: center; }
+
+@media (max-width: 768px) {
+  .sidebar { width: 60px; padding: 1rem 0.4rem; }
+  .sidebar-logo, .sidebar-user, .nav-item span:last-child { display: none; }
+  .main { margin-left: 60px; }
+  .charts-grid { grid-template-columns: 1fr; }
+  .page { padding: 1.2rem; }
+}
+</style>
+</head>
+<body>
+
+<!-- AUTH SCREEN -->
+<div class="auth-screen" id="authScreen">
+  <div class="auth-container">
+    <h1 id="authTitle">Connexion</h1>
+    <div class="auth-form">
+      <input type="email" id="authEmail" placeholder="Email" required>
+      <input type="password" id="authPassword" placeholder="Mot de passe" required>
+      <button onclick="handleAuth()">
+        <span id="authBtn">Connexion</span>
+      </button>
+      <div class="auth-error" id="authError"></div>
+    </div>
+    <div class="auth-toggle">
+      <span id="authToggleText">Pas de compte ? </span>
+      <button type="button" onclick="toggleAuthMode()" id="authToggleBtn">Créer un compte</button>
+    </div>
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+<nav class="sidebar" id="sidebar" style="display:none;">
+  <div class="sidebar-logo">💼 Ma collection<span>Tableau de bord</span></div>
+  <button class="nav-item active" id="nav-tableau" onclick="showPage('tableau')"><span>📋</span><span>Vision globale</span></button>
+  <button class="nav-item" id="nav-dashboard" onclick="showPage('dashboard')"><span>📊</span><span>Dashboard</span></button>
+  <button class="nav-item" id="nav-stats" onclick="showPage('stats')"><span>📈</span><span>Stats</span></button>
+  <div class="sidebar-user" id="sidebarUser"></div>
+  <button class="sidebar-logout" onclick="logout()">🚪 Déconnexion</button>
+</nav>
+
+<!-- MAIN CONTENT -->
+<main class="main" id="main" style="display:none;">
+
+  <!-- TABLEAU -->
+  <div class="page active" id="page-tableau">
+    <div class="page-title">📋 Vision de ma collection</div>
+
+    <div class="filter-section">
+      <div class="filter-row">
+        <div class="filter-group">
+          <label>Format</label>
+          <select id="filter-format" onchange="afficherTableau()">
+            <option value="">Tous</option>
+            <option value="carte">Carte</option>
+            <option value="coffret">Coffret</option>
+            <option value="blister">Blister</option>
+            <option value="display">Display</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Langue</label>
+          <select id="filter-langue" onchange="afficherTableau()">
+            <option value="">Toutes</option>
+            <option value="Francais">Français</option>
+            <option value="Anglais">Anglais</option>
+            <option value="Chinois">Chinois</option>
+            <option value="Japonais">Japonais</option>
+            <option value="Coree">Corée</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Statut</label>
+          <select id="filter-statut-tab" onchange="afficherTableau()">
+            <option value="">Tous</option>
+            <option value="stock">En stock</option>
+            <option value="vente">En vente</option>
+            <option value="vendu">Vendu</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Tri par prix achat</label>
+          <select id="filter-prix" onchange="afficherTableau()">
+            <option value="">Aucun</option>
+            <option value="asc">Croissant</option>
+            <option value="desc">Décroissant</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="stat-label">💰 Total investi</div><div class="stat-value" id="t-investi">—</div></div>
+      <div class="stat"><div class="stat-label">📈 Bénéfice estimé</div><div class="stat-value" id="t-estime">—</div></div>
+      <div class="stat"><div class="stat-label">🏆 Bénéfice réel</div><div class="stat-value" id="t-reel">—</div></div>
+    </div>
+
+    <div class="table-section">
+      <div class="table-wrap">
+        <table id="tableau">
+          <thead>
+            <tr>
+              <th style="width:36px"></th>
+              <th style="min-width:150px">Nom</th>
+              <th style="width:110px">Format</th>
+              <th style="width:110px">Langue</th>
+              <th style="width:95px">Prix achat</th>
+              <th style="width:60px">Qté</th>
+              <th style="width:115px">Revente potentiel</th>
+              <th style="width:115px">Revente définitif</th>
+              <th style="width:100px">Total investi</th>
+              <th style="width:105px">Bén. estimé</th>
+              <th style="width:95px">Bén. réel</th>
+              <th style="width:115px">Statut</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="buttons">
+      <button class="btn btn-add" onclick="ajouterLigne()">+ Ajouter</button>
+      <button class="btn btn-export" onclick="exporter()">💾 Exporter JSON</button>
+      <label class="btn btn-import">📂 Importer JSON
+        <input type="file" accept=".json" onchange="importer(event)" style="display:none">
+      </label>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="page" id="page-dashboard">
+    <div class="page-title">📊 Dashboard</div>
+    <div class="stats">
+      <div class="stat"><div class="stat-label">💰 Total investi</div><div class="stat-value" id="d-investi">—</div></div>
+      <div class="stat"><div class="stat-label">📦 Objets</div><div class="stat-value" id="d-count">0</div></div>
+      <div class="stat"><div class="stat-label">📈 Bén. estimé</div><div class="stat-value" id="d-estime">—</div></div>
+      <div class="stat"><div class="stat-label">🏆 Bén. réel</div><div class="stat-value" id="d-reel">—</div></div>
+    </div>
+    <div class="charts-grid">
+      <div class="chart-card"><h3>Répartition par statut</h3><canvas id="chartStatut"></canvas></div>
+      <div class="chart-card"><h3>Investi vs Bénéfice</h3><canvas id="chartComp"></canvas></div>
+      <div class="chart-card"><h3>Répartition par format</h3><canvas id="chartFormat"></canvas></div>
+      <div class="chart-card"><h3>Répartition par langue</h3><canvas id="chartLangue"></canvas></div>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="page" id="page-stats">
+    <div class="page-title">📈 Statistiques</div>
+    <div class="charts-grid">
+      <div class="chart-card"><h3>Bénéfice réel par objet — vendus (Top 10)</h3><canvas id="chartBenef"></canvas></div>
+      <div class="chart-card"><h3>Investi vs Potentiel — en stock/vente (Top 10)</h3><canvas id="chartPrix"></canvas></div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+// ============================================================
+// STORAGE — localStorage uniquement (GitHub Pages compatible)
+// ============================================================
+let donnees = [];
+let currentUser = null;
+let authMode = 'login';
+let nextId = 1;
+
+// ---------- Auth (simulée côté client via localStorage) ----------
+function getUsers() {
+  try { return JSON.parse(localStorage.getItem('users') || '{}'); } catch(e) { return {}; }
+}
+function saveUsers(u) { localStorage.setItem('users', JSON.stringify(u)); }
+
+function toggleAuthMode() {
+  authMode = authMode === 'login' ? 'register' : 'login';
+  document.getElementById('authTitle').textContent = authMode === 'login' ? 'Connexion' : 'Créer un compte';
+  document.getElementById('authBtn').textContent   = authMode === 'login' ? 'Connexion' : 'Créer un compte';
+  document.getElementById('authToggleText').textContent = authMode === 'login' ? 'Pas de compte ? ' : 'Déjà un compte ? ';
+  document.getElementById('authToggleBtn').textContent  = authMode === 'login' ? 'Créer un compte' : 'Connexion';
+  document.getElementById('authError').textContent = '';
+}
+
+function handleAuth() {
+  const email    = document.getElementById('authEmail').value.trim();
+  const password = document.getElementById('authPassword').value;
+  const errEl    = document.getElementById('authError');
+  errEl.textContent = '';
+
+  if (!email || !password) { errEl.textContent = 'Remplis tous les champs.'; return; }
+
+  const users = getUsers();
+
+  if (authMode === 'register') {
+    if (users[email]) { errEl.textContent = 'Cet email est déjà utilisé.'; return; }
+    users[email] = { password };
+    saveUsers(users);
+    localStorage.setItem('session', email);
+    currentUser = { email };
+    showApp();
+  } else {
+    if (!users[email] || users[email].password !== password) {
+      errEl.textContent = 'Email ou mot de passe incorrect.'; return;
+    }
+    localStorage.setItem('session', email);
+    currentUser = { email };
+    showApp();
+  }
+}
+
+function logout() {
+  localStorage.removeItem('session');
+  currentUser = null;
+  donnees = [];
+  authMode = 'login';
+  document.getElementById('authScreen').classList.remove('hidden');
+  document.getElementById('sidebar').style.display = 'none';
+  document.getElementById('main').style.display    = 'none';
+  document.getElementById('authEmail').value    = '';
+  document.getElementById('authPassword').value = '';
+  document.getElementById('authError').textContent = '';
+  document.getElementById('authTitle').textContent = 'Connexion';
+  document.getElementById('authBtn').textContent   = 'Connexion';
+}
+
+function showApp() {
+  document.getElementById('authScreen').classList.add('hidden');
+  document.getElementById('sidebar').style.display = 'flex';
+  document.getElementById('main').style.display    = 'flex';
+  document.getElementById('sidebarUser').textContent = '👤 ' + currentUser.email;
+  loadData();
+}
+
+// ---------- Données (localStorage par utilisateur) ----------
+function dataKey() { return 'data_' + currentUser.email; }
+
+function loadData() {
+  try {
+    const raw = localStorage.getItem(dataKey());
+    donnees = raw ? JSON.parse(raw) : [];
+    // recalcule nextId
+    nextId = donnees.reduce((m, d) => Math.max(m, d.id || 0), 0) + 1;
+  } catch(e) { donnees = []; }
+  afficherTableau();
+  afficherDashboard();
+}
+
+function persistData() {
+  localStorage.setItem(dataKey(), JSON.stringify(donnees));
+}
+
+// ---------- Utilitaires ----------
+function fmt(n) {
+  if (!isFinite(n) || n === null || n === undefined) return '—';
+  return n.toLocaleString('fr-FR', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' €';
+}
+
+function calculer(ligne) {
+  const achat     = parseFloat(ligne.achat)     || 0;
+  const qte       = parseFloat(ligne.qte)       || 0;
+  const potentiel = parseFloat(ligne.potentiel) || 0;
+  const definitif = parseFloat(ligne.definitif) || 0;
+  const investi   = achat * qte;
+  return {
+    investi,
+    benef_estime: (potentiel * qte) - investi,
+    benef_reel:   (definitif * qte) - investi
+  };
+}
+
+// ---------- Tableau ----------
+function ajouterLigne() {
+  donnees.unshift({ id: nextId++, nom: '', format: '', langue: '', achat: 0, qte: 1, potentiel: 0, definitif: 0, statut: 'stock' });
+  persistData();
+  afficherTableau();
+}
+
+function supprimerLigne(id) {
+  donnees = donnees.filter(d => d.id !== id);
+  persistData();
+  afficherTableau();
+  afficherDashboard();
+}
+
+function updateField(id, field, value) {
+  const idx = donnees.findIndex(d => d.id === id);
+  if (idx === -1) return;
+  donnees[idx][field] = value;
+  persistData();
+  // Recalcule les totaux sans re-render complet
+  majTotaux();
+  afficherDashboard();
+}
+
+function afficherTableau() {
+  const fFormat = document.getElementById('filter-format').value;
+  const fLangue = document.getElementById('filter-langue').value;
+  const fStatut = document.getElementById('filter-statut-tab').value;
+  const fPrix   = document.getElementById('filter-prix').value;
+
+  let lignes = donnees.filter(l => {
+    if (fFormat && (l.format || '').toLowerCase() !== fFormat.toLowerCase()) return false;
+    if (fLangue && l.langue !== fLangue) return false;
+    if (fStatut && l.statut !== fStatut) return false;
+    return true;
+  });
+
+  if (fPrix === 'asc')  lignes.sort((a,b) => (parseFloat(a.achat)||0) - (parseFloat(b.achat)||0));
+  if (fPrix === 'desc') lignes.sort((a,b) => (parseFloat(b.achat)||0) - (parseFloat(a.achat)||0));
+
+  const tbody = document.getElementById('rows');
+  tbody.innerHTML = lignes.map(ligne => {
+    const calc = calculer(ligne);
+    const inp  = (field, type, val, extra='') =>
+      `<input type="${type}" value="${val ?? ''}" ${extra}
+        onchange="updateField(${ligne.id},'${field}',this.value);this.closest('tr').querySelectorAll('td')[${
+          ['','nom','format','langue','achat','qte','potentiel','definitif'].indexOf(field)
+        }+1] && majLigneTotaux(this.closest('tr'), ${ligne.id})"
+        style="border:none;background:transparent;width:100%;font-size:13px;font-family:inherit;">`;
+
+    const sel = (field, opts, val) =>
+      `<select onchange="updateField(${ligne.id},'${field}',this.value)"
+        style="border:none;background:transparent;font-size:13px;font-family:inherit;">${
+          opts.map(o => `<option value="${o.v}" ${val===o.v?'selected':''}>${o.l}</option>`).join('')
+        }</select>`;
+
+    return `<tr data-id="${ligne.id}">
+      <td><button onclick="supprimerLigne(${ligne.id})" title="Supprimer"
+        style="background:none;border:none;color:#d94040;cursor:pointer;font-size:15px;">🗑</button></td>
+      <td>${inp('nom','text',ligne.nom)}</td>
+      <td>${sel('format',[{v:'',l:'-'},{v:'carte',l:'Carte'},{v:'coffret',l:'Coffret'},{v:'blister',l:'Blister'},{v:'display',l:'Display'}],ligne.format)}</td>
+      <td>${sel('langue',[{v:'',l:'-'},{v:'Francais',l:'Français'},{v:'Anglais',l:'Anglais'},{v:'Chinois',l:'Chinois'},{v:'Japonais',l:'Japonais'},{v:'Coree',l:'Corée'}],ligne.langue)}</td>
+      <td><input type="number" step="0.01" value="${ligne.achat||0}" onchange="updateField(${ligne.id},'achat',this.value);afficherTableau()"
+        style="border:none;background:transparent;width:100%;text-align:right;font-size:13px;"></td>
+      <td><input type="number" step="1" min="0" value="${ligne.qte||0}" onchange="updateField(${ligne.id},'qte',this.value);afficherTableau()"
+        style="border:none;background:transparent;width:100%;font-size:13px;"></td>
+      <td><input type="number" step="0.01" value="${ligne.potentiel||0}" onchange="updateField(${ligne.id},'potentiel',this.value);afficherTableau()"
+        style="border:none;background:transparent;width:100%;text-align:right;font-size:13px;"></td>
+      <td><input type="number" step="0.01" value="${ligne.definitif||0}" onchange="updateField(${ligne.id},'definitif',this.value);afficherTableau()"
+        style="border:none;background:transparent;width:100%;text-align:right;font-size:13px;"></td>
+      <td style="text-align:right">${fmt(calc.investi)}</td>
+      <td style="text-align:right;color:${calc.benef_estime>=0?'#1a9e5f':'#d94040'}">${fmt(calc.benef_estime)}</td>
+      <td style="text-align:right;color:${calc.benef_reel>=0?'#1a9e5f':'#d94040'}">${fmt(calc.benef_reel)}</td>
+      <td>${sel('statut',[{v:'stock',l:'En stock'},{v:'vente',l:'En vente'},{v:'vendu',l:'Vendu'}],ligne.statut||'stock')}</td>
+    </tr>`;
+  }).join('');
+
+  majTotaux();
+}
+
+function majTotaux() {
+  let ti=0, te=0, tr=0;
+  donnees.forEach(l => { const c=calculer(l); ti+=c.investi; te+=c.benef_estime; tr+=c.benef_reel; });
+  document.getElementById('t-investi').textContent = fmt(ti);
+  const teEl = document.getElementById('t-estime');
+  teEl.textContent = fmt(te);
+  teEl.className = 'stat-value ' + (te>=0?'success':'danger');
+  const trEl = document.getElementById('t-reel');
+  trEl.textContent = fmt(tr);
+  trEl.className = 'stat-value ' + (tr>=0?'success':'danger');
+}
+
+// ---------- Dashboard ----------
+let _charts = {};
+function destroyChart(id) { if(_charts[id]) { _charts[id].destroy(); delete _charts[id]; } }
+
+function makeChart(id, type, data, options={}) {
+  destroyChart(id);
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  _charts[id] = new Chart(ctx, { type, data, options: { responsive:true, maintainAspectRatio:true, ...options } });
+}
+
+function afficherDashboard() {
+  let ti=0, te=0, tr=0, sc={stock:0,vente:0,vendu:0}, fmt_cnt={}, lang_cnt={};
+  donnees.forEach(l => {
+    const c = calculer(l);
+    ti+=c.investi; te+=c.benef_estime; tr+=c.benef_reel;
+    if (sc[l.statut]!==undefined) sc[l.statut]++;
+    if (l.format) fmt_cnt[l.format] = (fmt_cnt[l.format]||0)+1;
+    if (l.langue) lang_cnt[l.langue] = (lang_cnt[l.langue]||0)+1;
+  });
+
+  document.getElementById('d-investi').textContent = fmt(ti);
+  document.getElementById('d-count').textContent   = donnees.length;
+  const deEl = document.getElementById('d-estime');
+  deEl.textContent = fmt(te); deEl.className = 'stat-value '+(te>=0?'success':'danger');
+  const drEl = document.getElementById('d-reel');
+  drEl.textContent = fmt(tr); drEl.className = 'stat-value '+(tr>=0?'success':'danger');
+
+  // Chart statut
+  makeChart('chartStatut','doughnut',{
+    labels:['En stock','En vente','Vendu'],
+    datasets:[{data:[sc.stock,sc.vente,sc.vendu],backgroundColor:['#4f6ef7','#f7a84f','#1a9e5f'],borderWidth:2}]
+  });
+
+  // Chart comparaison investi vs bénéfice
+  makeChart('chartComp','bar',{
+    labels:['Total investi','Bén. estimé','Bén. réel'],
+    datasets:[{data:[ti, te, tr], backgroundColor:['#1a1a2e','#4f6ef7',tr>=0?'#1a9e5f':'#d94040'], borderRadius:8}]
+  },{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}});
+
+  // Chart format
+  const fmtLabels = Object.keys(fmt_cnt);
+  makeChart('chartFormat','pie',{
+    labels: fmtLabels,
+    datasets:[{data:fmtLabels.map(k=>fmt_cnt[k]),backgroundColor:['#4f6ef7','#1a9e5f','#f7a84f','#d94040','#a855f7']}]
+  });
+
+  // Chart langue
+  const langLabels = Object.keys(lang_cnt);
+  makeChart('chartLangue','pie',{
+    labels: langLabels,
+    datasets:[{data:langLabels.map(k=>lang_cnt[k]),backgroundColor:['#1a1a2e','#4f6ef7','#f7a84f','#1a9e5f','#d94040']}]
+  });
+}
+
+// ---------- Stats ----------
+function afficherStats() {
+  // Graphique 1 : Bénéfice réel — items vendus
+  const venduOnly = donnees.filter(l => l.statut === 'vendu');
+  const benef = venduOnly
+    .map(l => ({ nom: l.nom || '(sans nom)', benef: (parseFloat(l.definitif)||0)*(parseFloat(l.qte)||0) - (parseFloat(l.achat)||0)*(parseFloat(l.qte)||0) }))
+    .sort((a,b) => b.benef - a.benef)
+    .slice(0,10);
+
+  destroyChart('chartBenef');
+  const ctx1 = document.getElementById('chartBenef').getContext('2d');
+  _charts['chartBenef'] = new Chart(ctx1, {
+    type: 'bar',
+    data: {
+      labels: benef.map(b => b.nom),
+      datasets: [{ label:'Bénéfice réel (€)', data:benef.map(b=>b.benef),
+        backgroundColor: benef.map(b=>b.benef>=0?'#1a9e5f':'#d94040'), borderRadius:8 }]
+    },
+    options: { responsive:true, maintainAspectRatio:true, scales:{ y:{beginAtZero:true} } }
+  });
+
+  // Graphique 2 : Investi vs Potentiel — en stock ou en vente
+  const stockVente = donnees.filter(l => l.statut==='stock' || l.statut==='vente')
+    .sort((a,b)=>(parseFloat(b.achat)||0)-(parseFloat(a.achat)||0))
+    .slice(0,10);
+
+  destroyChart('chartPrix');
+  const ctx2 = document.getElementById('chartPrix').getContext('2d');
+  _charts['chartPrix'] = new Chart(ctx2, {
+    type: 'bar',
+    data: {
+      labels: stockVente.map(p => p.nom || '(sans nom)'),
+      datasets: [
+        { label:'Investi (€)', data:stockVente.map(p=>(parseFloat(p.achat)||0)*(parseFloat(p.qte)||0)), backgroundColor:'#1a1a2e', borderRadius:8 },
+        { label:'Potentiel (€)', data:stockVente.map(p=>(parseFloat(p.potentiel)||0)*(parseFloat(p.qte)||0)), backgroundColor:'#4f6ef7', borderRadius:8 }
+      ]
+    },
+    options: { responsive:true, maintainAspectRatio:true, scales:{ y:{beginAtZero:true} } }
+  });
+}
+
+// ---------- Navigation ----------
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  document.getElementById('nav-'+name).classList.add('active');
+  if (name==='dashboard') afficherDashboard();
+  if (name==='stats')     afficherStats();
+}
+
+// ---------- Export / Import ----------
+function exporter() {
+  const blob = new Blob([JSON.stringify({ donnees }, null, 2)], { type:'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'collection.json';
+  a.click();
+}
+
+function importer(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      const imported = data.donnees || data;
+      if (!Array.isArray(imported)) throw new Error('Format invalide');
+      donnees = imported;
+      nextId = donnees.reduce((m,d)=>Math.max(m,d.id||0),0)+1;
+      persistData();
+      afficherTableau();
+      afficherDashboard();
+      alert('✅ ' + imported.length + ' éléments importés !');
+    } catch(err) {
+      alert('❌ Erreur : fichier JSON invalide.');
+    }
+    e.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+// ---------- Init ----------
+window.addEventListener('load', () => {
+  const session = localStorage.getItem('session');
+  if (session) {
+    currentUser = { email: session };
+    showApp();
+  }
+});
+</script>
+</body>
+</html>
