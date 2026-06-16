@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<link rel="icon" type="image/png" href="favicon.png"/>
+<link rel="apple-touch-icon" href="favicon-180.png"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>My Collection TCG</title>
+
+<!-- Firebase Auth only needed on index (login gate) -->
+<script type="module">
+import { initializeApp }                                          from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword,
+         createUserWithEmailAndPassword, signOut,
+         onAuthStateChanged, GoogleAuthProvider,
+         signInWithPopup }                                        from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey:            "AIzaSyCgCTF7sndU-q-eFvwiTKz_8C0a3JfZ0H4",
+  authDomain:        "ma-collection-69003.firebaseapp.com",
+  projectId:         "ma-collection-69003",
+  storageBucket:     "ma-collection-69003.firebasestorage.app",
+  messagingSenderId: "902502189555",
+  appId:             "1:902502189555:web:db73883fe242306da96a86"
+};
+
+const app      = initializeApp(firebaseConfig);
+const auth     = getAuth(app);
+const provider = new GoogleAuthProvider();
+
+// Expose for global handlers
+window._auth     = auth;
+window._provider = provider;
+window._fns      = { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, signInWithPopup };
+
+onAuthStateChanged(auth, user => {
+  if (user) {
+    // Already logged in → store minimal info and go to hub
+    sessionStorage.setItem('tcg_uid',   user.uid);
+    sessionStorage.setItem('tcg_email', user.email || user.displayName || user.uid);
+    showHub(user);
+  } else {
+    showLogin();
+  }
+});
+</script>
+
+<style>
+/* ── RESET & BASE ── */
+*, *::before, *::after { box-sizing: border-box; margin:0; padding:0; }
+html, body { height:100%; }
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: #05080d;
+  color: #dce8f0;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* ── BACKGROUND ── */
+body::before {
+  content:'';
+  position:fixed; inset:0;
+  background:
+    radial-gradient(ellipse 70% 50% at 15% 25%, rgba(59,130,246,.07) 0%, transparent 60%),
+    radial-gradient(ellipse 55% 40% at 85% 70%, rgba(124,58,237,.05) 0%, transparent 55%);
+  pointer-events:none; z-index:0;
+}
+
+/* ── VIEWS ── */
+#viewLogin, #viewHub { position:relative; z-index:1; }
+.hidden { display:none !important; }
+
+/* ══════════════════════════════════════
+   LOGIN VIEW
+══════════════════════════════════════ */
+#viewLogin {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.login-card {
+  background: rgba(15,25,35,.9);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 20px;
+  padding: 36px 32px;
+  width: 100%;
+  max-width: 380px;
+  box-shadow: 0 32px 64px rgba(0,0,0,.6);
+  backdrop-filter: blur(12px);
+  animation: cardIn .3s cubic-bezier(.22,.68,0,1.2);
+}
+@keyframes cardIn { from{opacity:0;transform:scale(.95) translateY(12px)} to{opacity:1;transform:none} }
+
+.login-logo {
+  display: flex; align-items: center; justify-content: center;
+  gap: 8px; margin-bottom: 28px;
+}
+.login-bolt {
+  width: 28px; height: 28px;
+  background: #f5c400;
+  clip-path: polygon(60% 0%,100% 40%,65% 45%,100% 100%,35% 55%,70% 50%,30% 0%);
+}
+.login-logo-text { font-size: 1.2rem; font-weight: 800; }
+.login-logo-text em { color: #f5c400; font-style: normal; }
+
+.login-title {
+  font-size: 1rem; font-weight: 700;
+  text-align: center; margin-bottom: 22px; color: #dce8f0;
+}
+
+.login-field { display:flex; flex-direction:column; gap:10px; margin-bottom:12px; }
+.login-field input {
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.1);
+  color: #dce8f0;
+  padding: 11px 14px;
+  border-radius: 10px;
+  font-size: .88rem;
+  outline: none;
+  transition: border-color .18s, box-shadow .18s;
+  font-family: inherit;
+}
+.login-field input::placeholder { color: #536b88; }
+.login-field input:focus {
+  border-color: #f5c400;
+  box-shadow: 0 0 0 3px rgba(245,196,0,.1);
+}
+
+.login-btn {
+  width: 100%; padding: 12px;
+  background: linear-gradient(135deg, #f5c400, #e8a800);
+  color: #000;
+  border: none; border-radius: 10px;
+  font-weight: 800; font-size: .9rem;
+  cursor: pointer; font-family: inherit;
+  transition: opacity .18s, transform .1s;
+}
+.login-btn:hover { opacity: .9; }
+.login-btn:active { transform: scale(.98); }
+
+.login-sep {
+  display:flex; align-items:center; gap:10px;
+  margin: 14px 0; color: #2a3a4e; font-size: .75rem;
+}
+.login-sep::before, .login-sep::after {
+  content:''; flex:1; height:1px; background: rgba(255,255,255,.07);
+}
+
+.btn-google {
+  width:100%; padding:11px;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 10px;
+  background: rgba(255,255,255,.04);
+  color: #dce8f0;
+  font-size: .85rem; font-weight: 600;
+  font-family: inherit; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  transition: all .18s;
+}
+.btn-google:hover { border-color: rgba(255,255,255,.22); background: rgba(255,255,255,.08); }
+
+.login-err {
+  color: #f87171; font-size: .75rem;
+  min-height: 18px; text-align: center; margin: 6px 0;
+}
+.login-switch {
+  text-align: center; margin-top: 14px;
+  font-size: .78rem; color: #536b88;
+}
+.login-switch button {
+  background: none; border: none; color: #f5c400;
+  cursor: pointer; font-weight: 700; font-family: inherit;
+  text-decoration: underline; text-underline-offset: 2px;
+}
+
+/* ══════════════════════════════════════
+   HUB VIEW
+══════════════════════════════════════ */
+#viewHub { display:flex; flex-direction:column; min-height:100vh; }
+
+.hub-header {
+  position: sticky; top:0; z-index:100;
+  background: rgba(5,8,13,.88);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(255,255,255,.06);
+  height: 52px;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 20px;
+}
+.hub-logo {
+  display:flex; align-items:center; gap:7px; text-decoration:none;
+}
+.hub-bolt {
+  width: 20px; height: 20px;
+  background: #f5c400;
+  clip-path: polygon(60% 0%,100% 40%,65% 45%,100% 100%,35% 55%,70% 50%,30% 0%);
+}
+.hub-logo-text { font-size: .95rem; font-weight: 800; color: #dce8f0; }
+.hub-logo-text em { color: #f5c400; font-style:normal; }
+
+.hub-right { display:flex; align-items:center; gap: 12px; }
+.hub-user { font-size: .7rem; color: #536b88; }
+.hub-logout {
+  background: rgba(239,68,68,.12);
+  border: 1px solid rgba(239,68,68,.25);
+  color: #f87171;
+  padding: 5px 12px; border-radius: 7px;
+  font-size: .72rem; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+  transition: all .18s;
+}
+.hub-logout:hover { background: rgba(239,68,68,.22); }
+
+.hub-main {
+  flex:1;
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  padding: 40px 20px;
+}
+
+.hub-eyebrow {
+  font-size: .65rem; font-weight: 700;
+  color: #f5c400; text-transform:uppercase; letter-spacing:.14em;
+  margin-bottom: 14px;
+  display:flex; align-items:center; gap:8px;
+}
+.hub-eyebrow::before, .hub-eyebrow::after {
+  content:''; width:24px; height:1px; background:rgba(245,196,0,.35);
+}
+
+.hub-title {
+  font-size: clamp(1.8rem,5vw,3rem);
+  font-weight: 900; text-align:center;
+  color: #fff; letter-spacing:-.4px;
+  margin-bottom: 10px; line-height:1.1;
+}
+.hub-title em { font-style:normal; color:#f5c400; }
+
+.hub-sub {
+  font-size: .85rem; color: #536b88;
+  text-align:center; max-width:380px;
+  margin-bottom: 44px; line-height:1.6;
+}
+
+/* App cards */
+.hub-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+  width: 100%; max-width: 860px;
+}
+
+.app-card {
+  background: rgba(255,255,255,.03);
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 16px;
+  padding: 26px 24px;
+  text-decoration: none; color: inherit;
+  transition: transform .2s cubic-bezier(.22,.68,0,1.2),
+              box-shadow .2s, border-color .2s, background .2s;
+  display: flex; flex-direction: column; gap: 12px;
+  position: relative; overflow: hidden;
+  cursor: pointer;
+}
+.app-card::after {
+  content:'';
+  position:absolute; top:0; left:0; right:0; height:2px;
+  opacity:0; transition:opacity .2s;
+}
+.app-card:hover { transform:translateY(-5px); border-color:rgba(255,255,255,.13); background:rgba(255,255,255,.05); }
+.app-card:hover::after { opacity:1; }
+
+.card-col::after        { background: linear-gradient(90deg,#1d4ed8,#4f6ef7); }
+.card-col:hover         { box-shadow: 0 18px 40px rgba(29,78,216,.18); border-color:rgba(79,110,247,.3); }
+.card-binder::after     { background: linear-gradient(90deg,#d97706,#f5c400); }
+.card-binder:hover      { box-shadow: 0 18px 40px rgba(245,196,0,.12); border-color:rgba(245,196,0,.28); }
+.card-soon              { opacity:.5; cursor:not-allowed; }
+.card-soon:hover        { transform:none; box-shadow:none; border-color:rgba(255,255,255,.07); background:rgba(255,255,255,.03); }
+.card-soon:hover::after { opacity:0; }
+
+.card-icon {
+  font-size: 1.8rem;
+  width:48px; height:48px;
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(255,255,255,.05); border-radius:11px;
+  border:1px solid rgba(255,255,255,.06);
+}
+.card-label {
+  font-size: .6rem; font-weight:700;
+  text-transform:uppercase; letter-spacing:.1em; color:#536b88;
+}
+.card-col .card-label    { color:#4f6ef7; }
+.card-binder .card-label { color:#f5c400; }
+
+.card-title { font-size:1.05rem; font-weight:800; color:#fff; }
+.card-desc  { font-size:.78rem; color:#536b88; line-height:1.6; flex:1; }
+.card-cta   {
+  display:inline-flex; align-items:center; gap:5px;
+  font-size:.72rem; font-weight:700; color:#536b88;
+  transition:color .15s;
+}
+.app-card:hover .card-cta      { color:#dce8f0; }
+.card-col:hover .card-cta      { color:#4f6ef7; }
+.card-binder:hover .card-cta   { color:#f5c400; }
+.card-arrow { transition:transform .15s; }
+.app-card:hover .card-arrow    { transform:translateX(3px); }
+
+.soon-tag {
+  position:absolute; top:12px; right:12px;
+  font-size:.58rem; font-weight:700;
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.1);
+  color:#536b88; padding:2px 7px; border-radius:20px;
+  text-transform:uppercase; letter-spacing:.06em;
+}
+
+footer {
+  text-align:center; padding:18px;
+  font-size:.65rem; color:#1d2a38;
+  position:relative; z-index:1;
+}
+
+@media(max-width:500px){
+  .login-card { padding:28px 20px; }
+  .hub-cards  { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- ══ LOGIN VIEW ══ -->
+<div id="viewLogin" class="hidden">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="login-bolt"></div>
+      <div class="login-logo-text">My Collection <em>TCG</em></div>
+    </div>
+    <div class="login-title" id="loginTitle">Connexion</div>
+
+    <div class="login-field">
+      <input type="email"    id="loginEmail"    placeholder="Email"/>
+      <input type="password" id="loginPassword" placeholder="Mot de passe"/>
+    </div>
+
+    <button class="login-btn" onclick="handleAuth()">
+      <span id="loginBtnLabel">Connexion</span>
+    </button>
+
+    <div class="login-sep"><span>ou</span></div>
+
+    <button class="btn-google" onclick="handleGoogle()">
+      <svg width="17" height="17" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 7.9 2.9l5.7-5.7C34.2 6.5 29.4 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.6-.4-3.9z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.7 19 12 24 12c3.1 0 5.8 1.1 7.9 2.9l5.7-5.7C34.2 6.5 29.4 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.3 35.3 26.8 36 24 36c-5.3 0-9.7-3.4-11.3-8H6.4C9.7 35.6 16.3 44 24 44z"/><path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.2-2.2 4.1-4.1 5.5l6.2 5.2C40.2 35.3 44 30 44 24c0-1.3-.1-2.6-.4-3.9z"/></svg>
+      Continuer avec Google
+    </button>
+
+    <div class="login-err" id="loginErr"></div>
+    <div class="login-switch">
+      <span id="loginSwitchTxt">Pas de compte ?</span>
+      <button onclick="toggleMode()" id="loginSwitchBtn">Créer un compte</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ HUB VIEW ══ -->
+<div id="viewHub" class="hidden">
+  <header class="hub-header">
+    <a href="index.html" class="hub-logo">
+      <div class="hub-bolt"></div>
+      <div class="hub-logo-text">My Collection <em>TCG</em></div>
+    </a>
+    <div class="hub-right">
+      <span class="hub-user" id="hubUser"></span>
+      <button class="hub-logout" onclick="logout()">🚪 Déconnexion</button>
+    </div>
+  </header>
+
+  <main class="hub-main">
+    <div class="hub-eyebrow">Tableau de bord</div>
+    <h1 class="hub-title">My Collection <em>TCG</em></h1>
+    <p class="hub-sub">Gère ta collection, suis tes investissements et organise tes classeurs Pokémon.</p>
+
+    <div class="hub-cards">
+      <!-- Ma Collection -->
+      <a href="collection.html" class="app-card card-col">
+        <div class="card-icon">💼</div>
+        <div>
+          <div class="card-label">Finance & Suivi</div>
+          <div class="card-title">Ma Collection</div>
+        </div>
+        <p class="card-desc">Suis tes investissements : prix d'achat, potentiel de revente, bénéfices estimés et réels. Dashboard avec graphiques.</p>
+        <div class="card-cta">Accéder <span class="card-arrow">→</span></div>
+      </a>
+
+      <!-- Mes Classeurs -->
+      <a href="binder.html" class="app-card card-binder">
+        <div class="card-icon">📘</div>
+        <div>
+          <div class="card-label">Collection TCG</div>
+          <div class="card-title">Mes Classeurs</div>
+        </div>
+        <p class="card-desc">Organise ta collection dans des classeurs virtuels. Parcours toutes les extensions, coche tes cartes, navigue page par page.</p>
+        <div class="card-cta">Accéder <span class="card-arrow">→</span></div>
+      </a>
+
+      <!-- Wishlist soon -->
+      <div class="app-card card-soon">
+        <span class="soon-tag">Bientôt</span>
+        <div class="card-icon">🎯</div>
+        <div>
+          <div class="card-label">À venir</div>
+          <div class="card-title">Wishlist</div>
+        </div>
+        <p class="card-desc">Crée ta liste de cartes à acquérir avec alertes de prix et suivi de disponibilité.</p>
+      </div>
+
+      <!-- Trades soon -->
+      <div class="app-card card-soon">
+        <span class="soon-tag">Bientôt</span>
+        <div class="card-icon">🔄</div>
+        <div>
+          <div class="card-label">À venir</div>
+          <div class="card-title">Échanges</div>
+        </div>
+        <p class="card-desc">Gère tes échanges avec d'autres collectionneurs. Historique et évaluation des trades.</p>
+      </div>
+    </div>
+  </main>
+
+  <footer>My Collection TCG · dcspacee</footer>
+</div>
+
+<script>
+var authMode = 'login';
+
+function showLogin() {
+  document.getElementById('viewLogin').classList.remove('hidden');
+  document.getElementById('viewHub').classList.add('hidden');
+}
+
+function showHub(user) {
+  document.getElementById('viewLogin').classList.add('hidden');
+  document.getElementById('viewHub').classList.remove('hidden');
+  document.getElementById('hubUser').textContent = '👤 ' + (user.email || user.displayName || '');
+}
+
+function toggleMode() {
+  authMode = authMode === 'login' ? 'register' : 'login';
+  var isR = authMode === 'register';
+  document.getElementById('loginTitle').textContent    = isR ? 'Créer un compte' : 'Connexion';
+  document.getElementById('loginBtnLabel').textContent = isR ? 'Créer un compte' : 'Connexion';
+  document.getElementById('loginSwitchTxt').textContent= isR ? 'Déjà un compte ?' : 'Pas de compte ?';
+  document.getElementById('loginSwitchBtn').textContent= isR ? 'Se connecter' : 'Créer un compte';
+  document.getElementById('loginErr').textContent = '';
+}
+
+function handleAuth() {
+  var email = document.getElementById('loginEmail').value.trim();
+  var pass  = document.getElementById('loginPassword').value;
+  var err   = document.getElementById('loginErr');
+  err.textContent = '';
+  if (!email || !pass) { err.textContent = 'Remplis tous les champs.'; return; }
+  var fn = authMode === 'register'
+    ? window._fns.createUserWithEmailAndPassword(window._auth, email, pass)
+    : window._fns.signInWithEmailAndPassword(window._auth, email, pass);
+  fn.catch(function(e) {
+    var msgs = {
+      'auth/email-already-in-use':'Cet email est déjà utilisé.',
+      'auth/invalid-email':'Email invalide.',
+      'auth/weak-password':'Mot de passe trop court (6 car. min).',
+      'auth/user-not-found':'Aucun compte avec cet email.',
+      'auth/wrong-password':'Mot de passe incorrect.',
+      'auth/invalid-credential':'Email ou mot de passe incorrect.'
+    };
+    err.textContent = msgs[e.code] || e.message;
+  });
+}
+
+function handleGoogle() {
+  window._fns.signInWithPopup(window._auth, window._provider)
+    .catch(function(e) { document.getElementById('loginErr').textContent = e.message; });
+}
+
+function logout() {
+  sessionStorage.removeItem('tcg_uid');
+  sessionStorage.removeItem('tcg_email');
+  window._fns.signOut(window._auth);
+}
+
+// Keyboard: Enter to submit
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && !document.getElementById('viewLogin').classList.contains('hidden')) {
+    handleAuth();
+  }
+});
+</script>
+</body>
+</html>
