@@ -1,0 +1,1986 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<link rel="icon" type="image/png" href="favicon.png"/>
+<link rel="apple-touch-icon" href="favicon-180.png"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Mes Classeurs — My Collection TCG</title>
+<script type="module">
+import { initializeApp }                         from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, onAuthStateChanged, signOut }  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc,
+         onSnapshot }                            from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey:            "AIzaSyCgCTF7sndU-q-eFvwiTKz_8C0a3JfZ0H4",
+  authDomain:        "ma-collection-69003.firebaseapp.com",
+  projectId:         "ma-collection-69003",
+  storageBucket:     "ma-collection-69003.firebasestorage.app",
+  messagingSenderId: "902502189555",
+  appId:             "1:902502189555:web:db73883fe242306da96a86"
+};
+
+const app  = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db   = getFirestore(app);
+
+window._bAuth    = auth;
+window._bDb      = db;
+window._bSignOut = signOut;
+window._bDoc     = doc;
+window._bSetDoc  = setDoc;
+window._bGetDoc  = getDoc;
+
+onAuthStateChanged(auth, async function(user) {
+  if (!user) {
+    window.location.href = 'index.html';
+    return;
+  }
+  window._bUid   = user.uid;
+  window._bEmail = user.email || user.displayName || user.uid;
+
+  // Show user email in header
+  const el = document.getElementById('hdrEmail');
+  if (el) el.textContent = '👤 ' + window._bEmail;
+
+  // Load user data from Firestore
+  try {
+    const ref  = doc(db, 'binders', user.uid);
+    const snap = await getDoc(ref);
+    if (snap.exists()) {
+      const data = snap.data();
+      // Merge Firestore data into S, preserving sets cache
+      const cached = S.sets || [];
+      S = data;
+      if (!S.sets || S.sets.length < 20) S.sets = cached;
+      S.binders ??= [];
+      S.owned   ??= {};
+    }
+  } catch(e) { console.warn('Firestore load error:', e); }
+
+  // Init UI
+  if (window._binderReady) window._binderReady();
+});
+</script>
+<style>
+/* ─── DESIGN TOKENS ─────────────────────────────── */
+:root {
+  --ink-0:  #05080d;
+  --ink-1:  #0c1320;
+  --ink-2:  #121d2e;
+  --ink-3:  #1a2740;
+  --ink-4:  #243350;
+  --line:   #1e2e44;
+  --line2:  #26394f;
+  --gold:   #f5c400;
+  --gold2:  #e8a800;
+  --blue:   #3b82f6;
+  --green:  #22c55e;
+  --red:    #ef4444;
+  --fog:    #475e78;
+  --mist:   #8fa3b8;
+  --snow:   #dce8f0;
+  --white:  #ffffff;
+  --r4:  4px;
+  --r8:  8px;
+  --r12: 12px;
+  --r16: 16px;
+  --sb:  248px;
+  --ap:  260px;
+  --ease: cubic-bezier(.22,.68,0,1.2);
+}
+
+/* ─── RESET ─────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; }
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--ink-0);
+  color: var(--snow);
+  height: 100vh;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── SCROLLBAR ─────────────────────────────────── */
+::-webkit-scrollbar { width: 3px; height: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--line2); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--fog); }
+
+
+/* ─── HOME LINK ─────────────────────────────────── */
+.home-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+  color: var(--mist);
+  font-size: .78rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: var(--r8);
+  border: 1px solid var(--line);
+  transition: all .18s;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.home-link:hover { color: var(--gold); border-color: rgba(245,196,0,.4); background: rgba(245,196,0,.06); }
+.home-link-ico { font-size: .9rem; }
+.home-link-name em { color: var(--gold); font-style: normal; }
+.header-sep {
+  width: 1px;
+  height: 24px;
+  background: var(--line);
+  flex-shrink: 0;
+}
+
+/* ─── HEADER ─────────────────────────────────────── */
+.header {
+  height: 48px;
+  background: var(--ink-1);
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  gap: 10px;
+  position: relative;
+  z-index: 200;
+  flex-shrink: 0;
+}
+.logo {
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: -.4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 8px;
+}
+.logo-bolt {
+  width: 22px; height: 22px;
+  background: var(--gold);
+  clip-path: polygon(60% 0%, 100% 40%, 65% 45%, 100% 100%, 35% 55%, 70% 50%, 30% 0%);
+  flex-shrink: 0;
+}
+.logo-text { color: var(--snow); }
+.logo-text span { color: var(--gold); }
+
+.hnav {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+}
+.hnav-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--fog);
+  padding: 5px 12px;
+  border-radius: var(--r8);
+  cursor: pointer;
+  font-size: .78rem;
+  font-weight: 600;
+  transition: color .15s, background .15s, border-color .15s;
+  display: flex; align-items: center; gap: 5px;
+}
+.hnav-btn:hover { color: var(--mist); background: var(--ink-2); }
+.hnav-btn.on { color: var(--gold); background: rgba(245,196,0,.08); border-color: rgba(245,196,0,.2); }
+
+.header-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.header-stat { font-size: .7rem; color: var(--fog); }
+.header-stat b { color: var(--gold); }
+
+/* ─── APP SHELL ─────────────────────────────────── */
+.app {
+  display: flex;
+  height: calc(100vh - 48px);
+  overflow: hidden;
+}
+
+/* ─── PANEL BASE ─────────────────────────────────── */
+.panel {
+  background: var(--ink-1);
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex-shrink: 0;
+  transition: width .22s var(--ease), min-width .22s var(--ease), opacity .18s;
+}
+.panel.right { border-right: none; border-left: 1px solid var(--line); }
+.panel.closed { width: 0 !important; min-width: 0 !important; opacity: 0; pointer-events: none; border: none; }
+
+.panel-head {
+  padding: 10px 11px 8px;
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+}
+.panel-head-row {
+  display: flex; align-items: center; gap: 6px;
+  margin-bottom: 6px;
+}
+.panel-head-row:last-child { margin-bottom: 0; }
+.panel-label {
+  font-size: .72rem;
+  font-weight: 700;
+  color: var(--fog);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  flex: 1;
+}
+
+/* ─── SETS PANEL ─────────────────────────────────── */
+#setsPanel { width: var(--sb); min-width: var(--sb); }
+
+.sets-scroll { flex: 1; overflow-y: auto; }
+
+.series-block {}
+.series-hdr {
+  padding: 7px 11px;
+  font-size: .72rem;
+  font-weight: 700;
+  color: var(--fog);
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  background: var(--ink-1);
+  position: sticky; top: 0; z-index: 1;
+  transition: background .12s;
+  user-select: none;
+}
+.series-hdr:hover { background: var(--ink-2); color: var(--mist); }
+.series-caret { font-size: .55rem; opacity: .5; transition: transform .15s; }
+.series-hdr.open .series-caret { transform: rotate(90deg); }
+
+.set-item {
+  padding: 5px 11px 5px 16px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  transition: background .1s;
+  border-left: 2px solid transparent;
+}
+.set-item:hover { background: rgba(255,255,255,.04); }
+.set-item.active { background: rgba(245,196,0,.07); border-left-color: var(--gold); }
+.set-icon { width: 24px; height: 16px; object-fit: contain; flex-shrink: 0; opacity: .8; }
+.set-name { font-size: .85rem; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.set-id { font-size: .58rem; color: var(--fog); font-family: monospace; }
+.set-badge { font-size: .7rem; color: var(--fog); background: var(--ink-3); padding: 1px 4px; border-radius: 3px; flex-shrink: 0; }
+.set-owned-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); flex-shrink: 0; opacity: 0; transition: opacity .15s; }
+.set-item.has-owned .set-owned-dot { opacity: 1; }
+
+/* ─── MAIN CENTER ─────────────────────────────────── */
+.main { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+
+/* ─── VIEWS ─────────────────────────────────────── */
+.view { display: none; flex: 1; overflow: hidden; }
+.view.on { display: flex; flex-direction: column; }
+
+/* ─── HOME ─────────────────────────────────────── */
+.home-scroll { flex: 1; overflow-y: auto; padding: 16px; }
+
+.section-head {
+  font-size: .65rem;
+  font-weight: 700;
+  color: var(--fog);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--line);
+}
+
+/* CREATE FORM */
+.create-form {
+  background: var(--ink-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r12);
+  padding: 14px;
+  margin-bottom: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-end;
+}
+.ff { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 110px; }
+.ff-label { font-size: .62rem; color: var(--fog); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
+
+/* ─── INPUTS ─────────────────────────────────────── */
+input, select, textarea {
+  background: var(--ink-3);
+  border: 1px solid var(--line2);
+  color: var(--snow);
+  padding: 6px 9px;
+  border-radius: var(--r8);
+  font-size: .8rem;
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+  width: 100%;
+  font-family: inherit;
+}
+input:focus, select:focus { border-color: var(--gold); box-shadow: 0 0 0 2px rgba(245,196,0,.1); }
+input::placeholder { color: var(--fog); }
+select option { background: var(--ink-2); }
+
+/* ─── COLOR PICKER ─────────────────────────────── */
+.color-row { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
+.csw {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: transform .15s var(--ease), box-shadow .15s;
+  flex-shrink: 0;
+  position: relative;
+}
+.csw:hover { transform: scale(1.25); }
+.csw.on { transform: scale(1.25); box-shadow: 0 0 0 2px var(--ink-3), 0 0 0 4px currentColor; }
+/* rainbow swatch — no white border, actual conic */
+.csw-rainbow {
+  background: conic-gradient(
+    hsl(0,100%,55%), hsl(45,100%,55%), hsl(90,100%,45%),
+    hsl(150,100%,40%), hsl(200,100%,55%), hsl(260,100%,65%),
+    hsl(310,100%,55%), hsl(360,100%,55%)
+  );
+  border: 1.5px solid rgba(255,255,255,.15) !important;
+}
+.csw-rainbow.on { box-shadow: 0 0 0 2px var(--ink-3), 0 0 0 4px rgba(255,255,255,.5); }
+.cpwrap { position: relative; width: 20px; height: 20px; flex-shrink: 0; }
+.cpwrap input[type=color] {
+  position: absolute; inset: 0;
+  opacity: 0; cursor: pointer;
+  width: 100%; height: 100%;
+  border: none; padding: 0;
+  background: none;
+}
+
+/* ─── BUTTONS ─────────────────────────────────── */
+.btn {
+  background: var(--gold);
+  color: #000;
+  border: none;
+  padding: 7px 14px;
+  border-radius: var(--r8);
+  font-weight: 700;
+  font-size: .78rem;
+  cursor: pointer;
+  transition: opacity .15s, transform .1s;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: inherit;
+}
+.btn:hover { opacity: .88; }
+.btn:active { transform: scale(.97); }
+.btn.ghost {
+  background: var(--ink-3);
+  color: var(--mist);
+  border: 1px solid var(--line2);
+  font-weight: 500;
+}
+.btn.ghost:hover { border-color: var(--gold); color: var(--gold); background: rgba(245,196,0,.06); }
+.btn.red { background: var(--red); color: #fff; }
+.btn.sm { padding: 4px 10px; font-size: .72rem; }
+.btn.xs { padding: 2px 7px; font-size: .75rem; }
+.btn.icon { padding: 5px 8px; }
+
+.icon-btn {
+  background: var(--ink-3);
+  border: 1px solid var(--line2);
+  color: var(--mist);
+  width: 28px; height: 28px;
+  border-radius: var(--r8);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .8rem;
+  transition: all .15s;
+  flex-shrink: 0;
+}
+.icon-btn:hover { border-color: var(--gold); color: var(--gold); }
+.icon-btn:disabled { opacity: .3; cursor: default; pointer-events: none; }
+
+/* ─── BINDER CARDS (HOME) ─────────────────────── */
+.binders-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(185px, 1fr));
+  gap: 10px;
+}
+.bcard {
+  border-radius: var(--r12);
+  padding: 14px;
+  cursor: pointer;
+  transition: transform .18s var(--ease), box-shadow .18s;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.04);
+}
+.bcard::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: rgba(255,255,255,.15);
+}
+.bcard:hover { transform: translateY(-3px); box-shadow: 0 14px 32px rgba(0,0,0,.55); }
+.bcard-ico { font-size: 1.6rem; margin-bottom: 6px; display: block; }
+.bcard-name { font-size: .95rem; font-weight: 700; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bcard-meta { font-size: .72rem; color: rgba(255,255,255,.42); margin-bottom: 2px; }
+.bcard-acts { position: absolute; top: 7px; right: 7px; display: flex; gap: 3px; opacity: 0; transition: opacity .15s; }
+.bcard:hover .bcard-acts { opacity: 1; }
+.pbar { margin-top: 8px; background: rgba(255,255,255,.08); border-radius: 2px; height: 2px; }
+.pbar-fill { height: 2px; border-radius: 2px; transition: width .6s var(--ease); }
+
+/* ─── BINDER VIEW ─────────────────────────────── */
+.binder-view { flex: 1; display: none; flex-direction: column; overflow: hidden; }
+.binder-view.on { display: flex; }
+
+.binder-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  background: var(--ink-1);
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+.binder-bar-title { font-size: .92rem; font-weight: 700; flex: 1; min-width: 80px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.page-nav { display: flex; align-items: center; gap: 4px; }
+.page-ind { font-size: .72rem; color: var(--fog); min-width: 60px; text-align: center; }
+
+.binder-body { display: flex; flex: 1; overflow: hidden; }
+
+.binder-canvas {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  position: relative;
+}
+
+/* CLICKABLE PAGE EDGES — click left/right side to flip pages */
+.page-edge {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 64px;
+  max-width: 14%;
+  background: none;
+  border: none;
+  cursor: pointer;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .2s;
+  padding: 0;
+}
+.page-edge-l { left: 0; justify-content: flex-start; }
+.page-edge-r { right: 0; justify-content: flex-end; }
+.page-edge:hover { background: linear-gradient(90deg, rgba(245,196,0,.08), transparent); }
+.page-edge-r:hover { background: linear-gradient(270deg, rgba(245,196,0,.08), transparent); }
+.page-edge:disabled { cursor: default; pointer-events: none; }
+.page-edge-arrow {
+  font-size: 1.6rem;
+  color: var(--fog);
+  opacity: 0;
+  transition: opacity .2s, color .2s, transform .15s;
+  padding: 0 10px;
+}
+.page-edge:hover .page-edge-arrow { opacity: 1; color: var(--gold); }
+.page-edge:active .page-edge-arrow { transform: scale(.85); }
+.page-edge:disabled .page-edge-arrow { opacity: 0 !important; }
+
+/* BOOK */
+.book {
+  background: var(--ink-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r16);
+  padding: 12px;
+  box-shadow: 0 0 0 1px rgba(255,255,255,.03), 0 20px 48px rgba(0,0,0,.7);
+  width: 100%;
+  max-width: 860px;
+  position: relative;
+  z-index: 1;
+}
+
+.book-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+.book-title { font-size: .7rem; font-weight: 700; color: var(--fog); }
+.book-pg { font-size: .68rem; color: var(--fog); background: var(--ink-3); padding: 2px 8px; border-radius: 10px; }
+
+/* CARD GRID */
+.card-grid {
+  display: grid;
+  gap: 7px;
+}
+@keyframes flipIn { from { opacity:0; transform:translateX(16px); } to { opacity:1; transform:translateX(0); } }
+.card-grid.anim { animation: flipIn .2s ease; }
+
+/* SLOT */
+.slot {
+  background: var(--ink-3);
+  border: 1.5px solid var(--line2);
+  border-radius: var(--r8);
+  aspect-ratio: 2.5 / 3.5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color .15s, background .15s, transform .12s;
+  position: relative;
+}
+.slot:hover { border-color: var(--gold); background: rgba(245,196,0,.04); }
+.slot.dov { border-color: var(--gold); border-style: solid; background: rgba(245,196,0,.1); transform: scale(1.04); }
+.slot img { width: 100%; height: 100%; object-fit: cover; border-radius: 6px; display: block; }
+.slot-empty { color: var(--line2); font-size: .6rem; pointer-events: none; }
+.slot-rm {
+  position: absolute; top: 2px; right: 2px;
+  background: rgba(239,68,68,.9);
+  border: none; color: #fff;
+  width: 16px; height: 16px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: .6rem;
+  display: none;
+  align-items: center; justify-content: center;
+}
+.slot:hover .slot-rm { display: flex; }
+
+/* SLOT NUMBER badge */
+.slot-num {
+  position: absolute; bottom: 2px; left: 2px;
+  background: rgba(0,0,0,.7);
+  color: var(--gold);
+  font-size: .5rem;
+  font-family: monospace;
+  padding: 1px 3px;
+  border-radius: 2px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .15s;
+}
+.slot:hover .slot-num { opacity: 1; }
+
+/* ─── ADD PANEL ─────────────────────────────────── */
+#addPanel { width: var(--ap); min-width: var(--ap); }
+#addPanel.right { border-left: 1px solid var(--line); }
+
+.ap-filters { display: flex; flex-direction: column; gap: 5px; }
+.ap-filters select, .ap-filters input { font-size: .72rem; padding: 5px 7px; }
+.ap-btns { display: flex; gap: 4px; margin-top: 5px; }
+.ap-btns .btn { flex: 1; font-size: .7rem; padding: 5px 8px; }
+
+.ap-cards { flex: 1; overflow-y: auto; padding: 7px; }
+.apc-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+
+/* AP card */
+.apc {
+  background: var(--ink-3);
+  border: 1px solid var(--line2);
+  border-radius: var(--r8);
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform .14s var(--ease), box-shadow .14s, border-color .14s;
+  position: relative;
+}
+.apc:hover { transform: translateY(-2px) scale(1.02); box-shadow: 0 8px 18px rgba(0,0,0,.5); border-color: rgba(245,196,0,.5); z-index: 2; }
+.apc:active { transform: translateY(0) scale(.97); }
+.apc img { width: 100%; display: block; pointer-events: none; }
+.apc-num { font-size: .62rem; padding: 1px 4px; color: var(--gold); font-family: monospace; background: rgba(0,0,0,.5); pointer-events: none; }
+.apc-name { font-size: .7rem; padding: 2px 4px 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--mist); pointer-events: none; }
+.apc-add { display: none; } /* legacy, unused */
+.apc-eye {
+  position: absolute; top: 2px; right: 2px;
+  background: rgba(0,0,0,.65); color: var(--mist);
+  border: none; width: 16px; height: 16px;
+  border-radius: 50%;
+  font-size: .58rem;
+  cursor: pointer;
+  display: none; align-items: center; justify-content: center;
+  transition: transform .1s, color .1s;
+}
+.apc:hover .apc-eye { display: flex; }
+.apc-eye:hover { transform: scale(1.15); color: var(--gold); }
+.apc.inc { border-color: var(--green); }
+.apc.inc::before {
+  content: '✓';
+  position: absolute; top: 2px; left: 2px;
+  background: var(--green); color: #000;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  font-size: .55rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none;
+}
+.apc-pag {
+  display: flex; align-items: center; justify-content: center; gap: 4px;
+  padding: 6px; border-top: 1px solid var(--line); flex-shrink: 0;
+  font-size: .68rem; color: var(--fog);
+}
+.apc-pag button { background: var(--ink-3); border: 1px solid var(--line2); color: var(--mist); padding: 2px 8px; border-radius: 5px; cursor: pointer; font-size: .68rem; }
+.apc-pag button:hover, .apc-pag button.on { border-color: var(--gold); color: var(--gold); }
+.apc-pag button:disabled { opacity: .3; cursor: default; }
+
+/* ─── COLLECTION VIEW ─────────────────────────── */
+.col-view { flex: 1; display: flex; overflow: hidden; }
+
+.col-main { flex: 1; overflow-y: auto; padding: 14px; }
+
+.col-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: var(--ink-1);
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+.col-bar-title { font-size: .92rem; font-weight: 700; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.col-stat-pill {
+  font-size: .68rem;
+  background: rgba(34,197,94,.12);
+  border: 1px solid rgba(34,197,94,.3);
+  color: var(--green);
+  padding: 3px 9px;
+  border-radius: 20px;
+}
+.col-stat-pill.zero { background: rgba(255,255,255,.05); border-color: var(--line2); color: var(--fog); }
+
+/* PokéCardex grid */
+.pcx-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(105px, 1fr));
+  gap: 9px;
+}
+
+.pcx-card {
+  background: var(--ink-2);
+  border: 1.5px solid var(--line);
+  border-radius: var(--r8);
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform .16s var(--ease), box-shadow .16s, border-color .15s;
+  position: relative;
+}
+.pcx-card:hover { transform: translateY(-3px) scale(1.02); box-shadow: 0 10px 24px rgba(0,0,0,.6); z-index: 2; }
+.pcx-card.owned { border-color: var(--green); }
+.pcx-card.owned::after {
+  content: '✓';
+  position: absolute; top: 3px; right: 3px;
+  background: var(--green); color: #000;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  font-size: .6rem; font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+}
+.pcx-card img { width: 100%; display: block; }
+.pcx-card-num {
+  position: absolute; top: 3px; left: 3px;
+  background: rgba(0,0,0,.75);
+  color: var(--gold); font-family: monospace;
+  font-size: .65rem; padding: 1px 4px; border-radius: 3px;
+}
+.pcx-card-name { font-size: .72rem; padding: 3px 5px 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+.pcx-card-rarity { font-size: .56rem; padding: 0 5px 4px; color: var(--fog); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.pcx-card-add {
+  position: absolute; bottom: 22px; right: 3px;
+  background: var(--gold); color: #000;
+  border: none; width: 19px; height: 19px;
+  border-radius: 50%; font-size: .85rem; font-weight: 800;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 6px rgba(0,0,0,.4);
+  opacity: .88;
+  transition: opacity .15s, transform .12s;
+}
+.pcx-card:hover .pcx-card-add { opacity: 1; transform: scale(1.1); }
+.pcx-card-add:active { transform: scale(.9); }
+
+/* hover zoom overlay */
+.pcx-zoom {
+  position: absolute; bottom: calc(100% + 6px); left: 50%;
+  transform: translateX(-50%);
+  width: 140px;
+  border-radius: var(--r8);
+  box-shadow: 0 12px 32px rgba(0,0,0,.85);
+  display: none;
+  pointer-events: none;
+  z-index: 100;
+}
+.pcx-card:hover .pcx-zoom { display: block; }
+
+/* rarity color coding */
+.pcx-card[data-rarity="Common"] .pcx-card-rarity { color: #94a3b8; }
+.pcx-card[data-rarity="Uncommon"] .pcx-card-rarity { color: #4ade80; }
+.pcx-card[data-rarity="Rare"] .pcx-card-rarity { color: #60a5fa; }
+.pcx-card[data-rarity="Rare Holo"] .pcx-card-rarity { color: #c084fc; }
+.pcx-card[data-rarity="Rare Ultra"] .pcx-card-rarity { color: #f59e0b; }
+.pcx-card[data-rarity="Rare Secret"] .pcx-card-rarity { color: #f97316; }
+.pcx-card[data-rarity="Amazing Rare"] .pcx-card-rarity { color: #22d3ee; }
+.pcx-card[data-rarity="Promo"] .pcx-card-rarity { color: #f472b6; }
+
+/* ─── MODALS ─────────────────────────────────────── */
+.overlay {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.82);
+  z-index: 600;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(3px);
+}
+.overlay.open { display: flex; }
+
+.modal {
+  background: var(--ink-2);
+  border: 1px solid var(--line2);
+  border-radius: var(--r16);
+  padding: 20px;
+  max-width: 420px;
+  width: 92%;
+  box-shadow: 0 32px 64px rgba(0,0,0,.7);
+  animation: modalIn .18s var(--ease);
+}
+@keyframes modalIn { from { opacity:0; transform:scale(.94) translateY(8px); } to { opacity:1; transform:scale(1) translateY(0); } }
+
+.modal-title { font-size: .95rem; font-weight: 800; margin-bottom: 14px; }
+.modal-img { width: 100%; max-width: 160px; display: block; margin: 0 auto 14px; border-radius: var(--r8); box-shadow: 0 8px 24px rgba(0,0,0,.6); }
+.modal-meta { font-size: .75rem; color: var(--mist); line-height: 1.8; margin-bottom: 12px; }
+.modal-meta b { color: var(--snow); }
+.modal-acts { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* slot pick modal */
+.sm-grid { display: grid; gap: 5px; margin: 10px 0; }
+.sm-slot {
+  background: var(--ink-3);
+  border: 1.5px dashed var(--line2);
+  border-radius: 5px;
+  aspect-ratio: 2.5/3.5;
+  cursor: pointer;
+  transition: border-color .12s, transform .1s;
+  overflow: hidden;
+}
+.sm-slot:hover { border-color: var(--gold); transform: scale(1.05); }
+.sm-slot.occ { opacity: .35; cursor: not-allowed; pointer-events: none; }
+.sm-slot img { width: 100%; height: 100%; object-fit: cover; }
+.sm-slot-empty { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: var(--line2); font-size: .8rem; }
+
+/* ─── SHARED ─────────────────────────────────────── */
+.loading { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 32px; color: var(--fog); font-size: .8rem; }
+.spinner { width: 16px; height: 16px; border: 2px solid var(--line2); border-top-color: var(--gold); border-radius: 50%; animation: spin .65s linear infinite; flex-shrink: 0; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.empty { text-align: center; padding: 32px 16px; color: var(--fog); }
+.empty-ico { font-size: 2rem; margin-bottom: 8px; }
+.empty p { font-size: .78rem; }
+
+/* TOAST */
+.toast {
+  position: fixed; bottom: 16px; right: 16px;
+  background: var(--ink-2);
+  border: 1px solid var(--line2);
+  border-left: 3px solid var(--gold);
+  color: var(--snow);
+  padding: 8px 14px;
+  border-radius: var(--r8);
+  font-size: .78rem;
+  box-shadow: 0 8px 24px rgba(0,0,0,.6);
+  z-index: 1000;
+  transform: translateY(80px);
+  opacity: 0;
+  transition: transform .25s var(--ease), opacity .2s;
+  pointer-events: none;
+  max-width: 260px;
+}
+.toast.on { transform: translateY(0); opacity: 1; }
+.toast.err { border-left-color: var(--red); }
+.toast.ok { border-left-color: var(--green); }
+
+/* ─── SEARCH BAR ─────────────────────────────────── */
+.search-row { display: flex; gap: 5px; }
+.search-row input { flex: 1; }
+
+/* ─── RESPONSIVE ─────────────────────────────────── */
+@media (max-width: 640px) {
+  :root { --sb: 100vw; --ap: 100vw; }
+  .pcx-grid { grid-template-columns: repeat(auto-fill, minmax(85px, 1fr)); }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════ HEADER ═══════════════════ -->
+<header class="header">
+  <a href="index.html" class="home-link" title="Accueil My Collection TCG">
+    <span class="home-link-ico">⚡</span>
+    <span class="home-link-name">My Collection <em>TCG</em></span>
+  </a>
+  <div class="header-sep"></div>
+  <div class="logo">
+    <div class="logo-bolt"></div>
+    <div class="logo-text">Binder <span>Pro</span></div>
+  </div>
+  <nav class="hnav">
+    <button class="hnav-btn on" id="hbHome" onclick="navTo('home')">📦 Classeurs</button>
+    <button class="hnav-btn" id="hbCol" onclick="navTo('collection')">⭐ Collection</button>
+  </nav>
+  <div class="header-right" style="display:flex;align-items:center;gap:10px">
+    <div class="header-stat" id="hdrStat"></div>
+    <span id="hdrEmail" style="font-size:.68rem;color:var(--fog)"></span>
+    <button onclick="binderLogout()" style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);color:#f87171;padding:4px 10px;border-radius:6px;font-size:.7rem;font-weight:700;cursor:pointer;font-family:inherit">🚪</button>
+  </div>
+</header>
+
+<!-- ═══════════════════ APP ═══════════════════════ -->
+<div class="app">
+
+  <!-- ── LEFT: SETS ── -->
+  <div class="panel" id="setsPanel">
+    <div class="panel-head">
+      <div class="panel-head-row">
+        <span class="panel-label">Extensions</span>
+        <div style="display:flex;gap:3px">
+          <button class="btn xs ghost on" id="stAll" onclick="spLang('all',this)">Tous</button>
+          <button class="btn xs ghost" id="stEN" onclick="spLang('en',this)">🇬🇧 EN</button>
+          <button class="btn xs ghost" id="stJP" onclick="spLang('ja',this)">🇯🇵 JP</button>
+        </div>
+      </div>
+      <input placeholder="Rechercher…" id="setQ" oninput="renderSetsPanel()" style="font-size:.74rem;padding:5px 8px"/>
+    </div>
+    <div class="sets-scroll" id="setsList"></div>
+  </div>
+
+  <!-- ── CENTER ── -->
+  <div class="main">
+
+    <!-- HOME VIEW -->
+    <div class="view on" id="viewHome">
+      <div class="home-scroll">
+        <div class="section-head">Créer un classeur</div>
+        <div class="create-form">
+          <div class="ff">
+            <span class="ff-label">Nom</span>
+            <input id="newName" placeholder="Mon classeur…"/>
+          </div>
+          <div class="ff" style="max-width:150px">
+            <span class="ff-label">Format</span>
+            <select id="newFmt">
+              <option value="1x1">1×1 — 1 carte</option>
+              <option value="2x2">2×2 — 4</option>
+              <option value="3x3" selected>3×3 — 9</option>
+              <option value="4x4">4×4 — 16</option>
+              <option value="2x3">2×3 — 6</option>
+              <option value="3x2">3×2 — 6</option>
+              <option value="2x4">2×4 — 8</option>
+              <option value="4x2">4×2 — 8</option>
+              <option value="3x4">3×4 — 12</option>
+              <option value="4x3">4×3 — 12</option>
+              <option value="5x3">5×3 — 15</option>
+              <option value="5x4">5×4 — 20</option>
+              <option value="4x5">4×5 — 20</option>
+              <option value="6x4">6×4 — 24</option>
+              <option value="4x6">4×6 — 24</option>
+            </select>
+          </div>
+          <div class="ff" style="max-width:90px">
+            <span class="ff-label">Pages</span>
+            <select id="newPages">
+              <option value="5">5</option>
+              <option value="10" selected>10</option>
+              <option value="20">20</option>
+              <option value="30">30</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+            </select>
+          </div>
+          <div class="ff">
+            <span class="ff-label">Couleur</span>
+            <div class="color-row" id="colorRow"></div>
+          </div>
+          <button class="btn" onclick="createBinder()">+ Créer</button>
+        </div>
+        <div class="section-head">Mes classeurs</div>
+        <div class="binders-grid" id="binderGrid"></div>
+      </div>
+    </div>
+
+    <!-- BINDER VIEW -->
+    <div class="binder-view" id="viewBinder">
+      <div class="binder-bar">
+        <button class="icon-btn" onclick="navTo('home')" title="Retour" style="font-size:.7rem">←</button>
+        <span class="binder-bar-title" id="btitle"></span>
+        <div class="page-nav">
+          <button class="icon-btn" id="prevBtn" onclick="changePage(-1)">‹</button>
+          <span class="page-ind" id="pageInd"></span>
+          <button class="icon-btn" id="nextBtn" onclick="changePage(1)">›</button>
+          <select id="pageJump" onchange="jumpPage(+this.value)" style="font-size:.68rem;padding:3px 5px;max-width:65px;border-radius:6px"></select>
+        </div>
+        <button class="icon-btn" id="togAP" onclick="toggleAddPanel()" title="Ajouter des cartes" style="margin-left:4px">🎴</button>
+        <button class="btn red sm" onclick="delBinder()" style="margin-left:4px">🗑</button>
+      </div>
+      <div class="binder-body">
+        <div class="binder-canvas" id="binderCanvas">
+          <button class="page-edge page-edge-l" id="edgeL" onclick="changePage(-1)" title="Page précédente">
+            <span class="page-edge-arrow">‹</span>
+          </button>
+          <div class="book" id="book">
+            <div class="book-header">
+              <span class="book-title" id="bookTitle">—</span>
+              <span class="book-pg" id="bookPg">Page 1</span>
+            </div>
+            <div class="card-grid" id="cardGrid"></div>
+          </div>
+          <button class="page-edge page-edge-r" id="edgeR" onclick="changePage(1)" title="Page suivante">
+            <span class="page-edge-arrow">›</span>
+          </button>
+        </div>
+        <!-- ADD PANEL -->
+        <div class="panel right closed" id="addPanel">
+          <div class="panel-head">
+            <div class="panel-head-row">
+              <span class="panel-label" id="apLabel">Ajouter</span>
+              <button class="icon-btn" onclick="toggleAddPanel()" style="width:22px;height:22px;font-size:.65rem">✕</button>
+            </div>
+            <div class="ap-filters">
+              <select id="apSet" onchange="apLoad()"><option value="">Toutes extensions</option></select>
+              <div class="search-row">
+                <input id="apQ" placeholder="Nom de carte…" oninput="apDebounce()" style="font-size:.72rem;padding:4px 7px"/>
+              </div>
+            </div>
+            <div class="ap-btns">
+              <button class="btn sm" onclick="apAddAll()">⊕ Tout le set</button>
+              <button class="btn ghost sm" onclick="apLoad()">↺</button>
+            </div>
+          </div>
+          <div class="ap-cards"><div class="apc-grid" id="apGrid"></div></div>
+          <div class="apc-pag" id="apPag"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- COLLECTION VIEW -->
+    <div class="view" id="viewCol">
+      <div class="col-bar">
+        <span class="col-bar-title" id="colTitle">Collection</span>
+        <div id="colStats" style="display:flex;gap:6px;align-items:center"></div>
+        <span id="colActiveBinder" style="font-size:.66rem;color:var(--fog);display:flex;align-items:center;gap:5px;padding:3px 9px;border:1px solid var(--line);border-radius:20px;background:var(--ink-2)"></span>
+        <div style="display:flex;gap:5px;margin-left:auto">
+          <select id="colSort" onchange="renderColCards()" style="font-size:.7rem;padding:3px 7px;width:auto">
+            <option value="num">N°</option>
+            <option value="name">Nom</option>
+          </select>
+          <button class="btn ghost sm" onclick="colAll(true)">✓ Tout</button>
+          <button class="btn ghost sm" onclick="colAll(false)">✗ Rien</button>
+        </div>
+      </div>
+      <div class="col-view">
+        <div class="col-main"><div class="pcx-grid" id="colGrid"></div></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══ MODAL: CARD DETAIL ═══ -->
+<div class="overlay" id="cardModal">
+  <div class="modal">
+    <div class="modal-title" id="mName"></div>
+    <img class="modal-img" id="mImg" src="" alt="" onclick="window.open(this.src)" style="cursor:zoom-in" title="Ouvrir en grand"/>
+    <div class="modal-meta" id="mMeta"></div>
+    <div class="modal-acts">
+      <button class="btn sm" onclick="mAddBinder()">+ Classeur</button>
+      <button class="btn ghost sm" id="mOwnBtn" onclick="mToggleOwn()"></button>
+      <button class="btn ghost sm" onclick="closeMod()">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL: SLOT PICKER ═══ -->
+<div class="overlay" id="slotModal">
+  <div class="modal">
+    <div class="modal-title">Choisir un emplacement</div>
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+      <select id="smBind" onchange="renderSmGrid()" style="flex:1;font-size:.78rem"></select>
+      <button class="icon-btn sm" onclick="smDir(-1)">‹</button>
+      <span id="smPgInfo" style="font-size:.7rem;color:var(--fog);white-space:nowrap"></span>
+      <button class="icon-btn sm" onclick="smDir(1)">›</button>
+    </div>
+    <div class="sm-grid" id="smGrid"></div>
+    <button class="btn ghost sm" onclick="closeSlotMod()" style="width:100%;margin-top:8px">Annuler</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ════════════════════════════════════════════
+// CONSTANTS
+// ════════════════════════════════════════════
+// TCGdex — free, no API key, multi-language (includes Japanese).
+// Replaces the old pokemontcg.io API which never had JP data and
+// became unreliable after its migration to Scrydex.
+const API_BASE = 'https://api.tcgdex.net/v2';
+const SK  = 'pbp5';
+
+// Optional future API key support (not required by TCGdex, kept for
+// forward-compat in case we add a paid/rate-limited provider later).
+let API_KEY = (() => { try { return localStorage.getItem(SK + '_apikey') || ''; } catch { return ''; } })();
+function setApiKey(k) {
+  API_KEY = k || '';
+  try { localStorage.setItem(SK + '_apikey', API_KEY); } catch(e) {}
+}
+
+const PRESETS = [
+  '#1d4ed8','#7c3aed','#be185d','#b91c1c',
+  '#b45309','#15803d','#0369a1','#374151'
+];
+
+const FMTS = {
+  '1x1':{c:1,r:1},'2x2':{c:2,r:2},'3x3':{c:3,r:3},'4x4':{c:4,r:4},
+  '2x3':{c:2,r:3},'3x2':{c:3,r:2},'2x4':{c:2,r:4},'4x2':{c:4,r:2},
+  '3x4':{c:3,r:4},'4x3':{c:4,r:3},'5x3':{c:5,r:3},'5x4':{c:5,r:4},
+  '4x5':{c:4,r:5},'6x4':{c:6,r:4},'4x6':{c:4,r:6}
+};
+
+// ── Robust fetch: timeout + automatic retry with backoff ──
+async function tcgFetch(path, { lang = 'en', timeoutMs = 9000, retries = 2 } = {}) {
+  const url = `${API_BASE}/${lang}/${path}`;
+  let lastErr;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    try {
+      const headers = {};
+      if (API_KEY) headers['X-Api-Key'] = API_KEY;
+      const r = await fetch(url, { signal: ctrl.signal, headers });
+      clearTimeout(timer);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return await r.json();
+    } catch (e) {
+      clearTimeout(timer);
+      lastErr = e;
+      if (attempt < retries) await new Promise(res => setTimeout(res, 500 * (attempt + 1)));
+    }
+  }
+  throw lastErr;
+}
+
+// Build a usable image URL from a TCGdex bare image base (no extension)
+function tcgImg(base, quality = 'low') {
+  if (!base) return '';
+  return `${base}/${quality}.webp`;
+}
+
+// ════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════
+// S starts with local cache for speed, Firebase will merge on load
+let S = (() => {
+  try { return JSON.parse(localStorage.getItem(SK + '_cache')) || {}; } catch { return {}; }
+})();
+S.binders ??= [];
+S.owned   ??= {};
+S.sets    ??= {}; // { en: [...], ja: [...] }
+
+let pickColor   = PRESETS[0];
+let curBinder   = null;
+let curPage     = 1;
+let drag        = null;
+let pendCard    = null;
+let smPage      = 1;
+let apPg        = 1;
+let apTot       = 0;
+let apTimer     = null;
+let addOpen     = false;
+let allSetsByLang = { en: [], ja: [] };   // raw series→sets tree per language
+let setsFlatByLang = { en: [], ja: [] };  // flattened [{...set, seriesName, lang}]
+let setsLoading = { en: false, ja: false };
+let curSetId    = '';
+let curSetName  = '';
+let curSetLang  = 'en';   // language of the currently selected set
+let langFilter  = 'all';  // sidebar filter: 'all' | 'en' | 'ja'
+let apLang      = 'en';   // language used in the add-panel search
+let colCards    = [];
+let mCard       = null;
+
+// ════════════════════════════════════════════
+// BOOT
+// ════════════════════════════════════════════
+// Boot is triggered by Firebase onAuthStateChanged (see module script)
+window._binderReady = async function() {
+  buildColorRow();
+  renderBinders();
+  updateHdrStat();
+  renderSetsPanel(); // render immediately with a loading state
+  await loadSeries('en');   // English loads eagerly (default tab)
+  populateApSet();
+  renderSetsPanel();
+  loadSeries('ja');         // Japanese loads in the background, no blocking
+};
+
+// Logout helper
+function binderLogout() {
+  if (window._bSignOut && window._bAuth) {
+    window._bSignOut(window._bAuth).then(() => { window.location.href = 'index.html'; });
+  }
+}
+
+// ════════════════════════════════════════════
+// NAVIGATION
+// ════════════════════════════════════════════
+function navTo(page) {
+  document.querySelectorAll('.view, .binder-view').forEach(v => v.classList.remove('on'));
+  document.querySelectorAll('.hnav-btn').forEach(b => b.classList.remove('on'));
+
+  if (page === 'home') {
+    document.getElementById('viewHome').classList.add('on');
+    document.getElementById('hbHome').classList.add('on');
+    renderBinders();
+  } else if (page === 'binder') {
+    document.getElementById('viewBinder').classList.add('on');
+    document.getElementById('hbHome').classList.add('on');
+  } else if (page === 'collection') {
+    document.getElementById('viewCol').classList.add('on');
+    document.getElementById('hbCol').classList.add('on');
+    if (curSetId) loadColSet(curSetId, curSetName);
+    else showColEmpty();
+  }
+}
+
+// ════════════════════════════════════════════
+// COLOR PICKER
+// ════════════════════════════════════════════
+function buildColorRow() {
+  const row = document.getElementById('colorRow');
+  row.innerHTML = '';
+  PRESETS.forEach((c, i) => {
+    const d = document.createElement('div');
+    d.className = 'csw' + (i === 0 ? ' on' : '');
+    d.style.cssText = `background:${c};color:${c}`;
+    d.onclick = () => {
+      row.querySelectorAll('.csw').forEach(x => x.classList.remove('on'));
+      d.classList.add('on');
+      pickColor = c;
+    };
+    row.appendChild(d);
+  });
+  // Rainbow / custom
+  const wrap = document.createElement('div'); wrap.className = 'cpwrap';
+  const sw   = document.createElement('div'); sw.className = 'csw csw-rainbow';
+  const inp  = document.createElement('input'); inp.type = 'color'; inp.value = '#ff6600';
+  inp.oninput = e => {
+    pickColor = e.target.value;
+    sw.style.outline = 'none';
+    row.querySelectorAll('.csw').forEach(x => x.classList.remove('on'));
+    sw.classList.add('on');
+  };
+  wrap.appendChild(sw);
+  wrap.appendChild(inp);
+  row.appendChild(wrap);
+}
+
+// ════════════════════════════════════════════
+// SETS
+// ════════════════════════════════════════════
+async function loadSeries(lang) {
+  if (setsFlatByLang[lang]?.length) return;
+  setsLoading[lang] = true;
+  renderSetsPanel();
+  try {
+    const raw  = await tcgFetch('sets', { lang, timeoutMs: 12000 });
+    // TCGdex may return array directly or {data:[...]}
+    const sets = Array.isArray(raw) ? raw : (raw?.data || []);
+    const flat = sets.map(s => ({
+      id:         s.id,
+      name:       s.name,
+      seriesId:   deriveSeriesId(s.id),
+      seriesName: deriveSeriesName(s.id),
+      cardCount:  s.cardCount || {},
+      symbol:     s.symbol || null,
+      lang
+    }));
+    setsFlatByLang[lang] = flat;
+    allSetsByLang[lang]  = flat;
+  } catch(e) {
+    toast(lang === 'ja' ? 'Sets JP indisponibles' : 'Sets EN indisponibles', 'err');
+    setsFlatByLang[lang] = [];
+  } finally {
+    setsLoading[lang] = false;
+    renderSetsPanel();
+    if (lang === 'en') populateApSet();
+  }
+}
+
+function deriveSeriesId(setId) {
+  const m = setId.match(/^([a-z]+)/i);
+  return m ? m[1].toLowerCase() : 'other';
+}
+
+const SERIES_NAMES = {
+  sv:'Scarlet & Violet', swsh:'Sword & Shield', sm:'Sun & Moon',
+  xy:'XY', bw:'Black & White', hgss:'HeartGold & SoulSilver',
+  dp:'Diamond & Pearl', ex:'EX Series', base:'Base', gym:'Gym',
+  neo:'Neo', ecard:'E-Card', pop:'POP Series', pl:'Platinum', col:'Call of Legends',
+};
+function deriveSeriesName(setId) {
+  return SERIES_NAMES[deriveSeriesId(setId)] || deriveSeriesId(setId).toUpperCase();
+}
+
+function renderSetsPanel() {
+  const q   = (document.getElementById('setQ')?.value || '').toLowerCase();
+  const el  = document.getElementById('setsList');
+  el.innerHTML = '';
+
+  const langsToShow = langFilter === 'all' ? ['en', 'ja'] : [langFilter];
+
+  langsToShow.forEach(lang => {
+    if (setsLoading[lang] && !setsFlatByLang[lang]?.length) {
+      const ld = document.createElement('div');
+      ld.className = 'loading';
+      ld.innerHTML = `<div class="spinner"></div> ${lang === 'ja' ? 'Chargement JP…' : 'Chargement EN…'}`;
+      el.appendChild(ld);
+      return;
+    }
+
+    const flag = lang === 'ja' ? '🇯🇵' : '🇬🇧';
+    const list = setsFlatByLang[lang] || [];
+
+    const map = new Map();
+    list.forEach(s => {
+      if (q && !s.name.toLowerCase().includes(q) && !s.id.toLowerCase().includes(q)) return;
+      if (!map.has(s.seriesName)) map.set(s.seriesName, []);
+      map.get(s.seriesName).push(s);
+    });
+
+    map.forEach((sets, seriesName) => {
+      const key       = `sc_${lang}_${seriesName}`;
+      const collapsed = S[key];
+      const g = document.createElement('div'); g.className = 'series-block';
+
+      const hdr = document.createElement('div');
+      hdr.className = 'series-hdr' + (collapsed ? '' : ' open');
+      hdr.innerHTML = `<span>${flag} ${esc(seriesName)}</span><span class="series-caret">▶</span>`;
+      hdr.onclick = () => { S[key] = !collapsed; save(); renderSetsPanel(); };
+      g.appendChild(hdr);
+
+      if (!collapsed) {
+        sets.forEach(s => {
+          const ownedCount = countOwned(s.id, lang);
+          const isActive   = curSetId === s.id && curSetLang === lang;
+          const row = document.createElement('div');
+          row.className = 'set-item'
+            + (isActive   ? ' active'    : '')
+            + (ownedCount ? ' has-owned' : '');
+          // symbol is already a full URL — use directly, no extension appending
+          const symHtml = s.symbol
+            ? `<img class="set-icon" src="${s.symbol}" onerror="this.style.display='none'"/>`
+            : '<span class="set-icon"></span>';
+          row.innerHTML = `
+            ${symHtml}
+            <span class="set-name">${esc(s.name)}</span>
+            <span class="set-badge">${s.cardCount?.official ?? s.cardCount?.total ?? '?'}</span>
+            <span class="set-owned-dot"></span>`;
+          row.onclick = () => selectSet(s.id, s.name, lang);
+          g.appendChild(row);  // ← BUG FIX: was missing, causing empty panel
+        });
+      }
+      el.appendChild(g);
+    });
+  });
+
+  if (el.children.length === 0 && !setsLoading.en && !setsLoading.ja) {
+    el.innerHTML = '<div class="empty"><div class="empty-ico">🔍</div><p>Aucune extension trouvée</p></div>';
+  }
+}
+
+
+function spLang(l, btn) {
+  langFilter = l;
+  document.querySelectorAll('#stAll,#stJP,#stEN').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  // Lazy-load the language tree the first time its tab is opened
+  if (l !== 'all' && !setsFlatByLang[l]?.length) loadSeries(l);
+  renderSetsPanel();
+}
+
+function selectSet(id, name, lang) {
+  curSetId   = id;
+  curSetName = name;
+  curSetLang = lang;
+  apLang     = lang;
+  // update ap filter (only meaningful if same lang is loaded there)
+  const apS = document.getElementById('apSet');
+  if (apS && lang === apLang) apS.value = id;
+  renderSetsPanel();
+
+  // navigate
+  const bnOn  = document.getElementById('viewBinder').classList.contains('on');
+  if (bnOn && addOpen) { populateApSet(); apLoad(); return; }
+  navTo('collection');
+  loadColSet(id, name, lang);
+}
+
+function countOwned(setId, lang) {
+  const prefix = `${lang}__${setId}__`;
+  return Object.keys(S.owned).filter(k => k.startsWith(prefix)).length;
+}
+
+function populateApSet() {
+  const sel = document.getElementById('apSet');
+  if (!sel) return;
+  const list = setsFlatByLang[apLang] || [];
+  sel.innerHTML = '<option value="">Toutes extensions</option>';
+  const map = new Map();
+  list.forEach(s => {
+    if (!map.has(s.seriesName)) map.set(s.seriesName, []);
+    map.get(s.seriesName).push(s);
+  });
+  map.forEach((sets, seriesName) => {
+    const og = document.createElement('optgroup'); og.label = seriesName;
+    sets.forEach(s => {
+      const o = document.createElement('option');
+      o.value = s.id; o.textContent = s.name;
+      og.appendChild(o);
+    });
+    sel.appendChild(og);
+  });
+  if (curSetId && curSetLang === apLang) sel.value = curSetId;
+}
+
+// ════════════════════════════════════════════
+// BINDERS — HOME
+// ════════════════════════════════════════════
+function createBinder() {
+  const name = document.getElementById('newName').value.trim();
+  if (!name) { toast('Donne un nom au classeur !', 'err'); return; }
+  const fmt = document.getElementById('newFmt').value;
+  const { c, r } = FMTS[fmt] || { c:3, r:3 };
+  S.binders.push({
+    id: Date.now(), name,
+    fmt, cols: c, rows: r,
+    pages: +document.getElementById('newPages').value,
+    color: pickColor,
+    cards: []
+  });
+  save(); renderBinders(); updateHdrStat();
+  document.getElementById('newName').value = '';
+  toast('Classeur créé ✔', 'ok');
+}
+
+function renderBinders() {
+  const el = document.getElementById('binderGrid');
+  if (!S.binders.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-ico">📭</div><p>Aucun classeur. Crée-en un ci-dessus !</p></div>';
+    return;
+  }
+  el.innerHTML = S.binders.map(b => {
+    const tot    = b.cols * b.rows * b.pages;
+    const filled = b.cards.length;
+    const pct    = tot ? Math.round(filled / tot * 100) : 0;
+    return `
+    <div class="bcard" style="background:linear-gradient(145deg,${b.color}1c,${b.color}06);border-color:${b.color}30" onclick="openBinder(${b.id})">
+      <div class="bcard-acts">
+        <button class="icon-btn" style="width:22px;height:22px;font-size:.65rem" onclick="event.stopPropagation();delBinderById(${b.id})">🗑</button>
+      </div>
+      <span class="bcard-ico">📘</span>
+      <div class="bcard-name">${esc(b.name)}</div>
+      <div class="bcard-meta">${b.fmt.replace('x','×')} · ${b.pages} pages</div>
+      <div class="bcard-meta">${filled} / ${tot} cartes · ${pct}%</div>
+      <div class="pbar"><div class="pbar-fill" style="background:${b.color};width:${pct}%"></div></div>
+    </div>`;
+  }).join('');
+}
+
+function openBinder(id) {
+  curBinder = S.binders.find(b => b.id === id);
+  if (!curBinder) return;
+  curPage = 1;
+
+  document.getElementById('btitle').textContent    = curBinder.name;
+  document.getElementById('bookTitle').textContent = curBinder.name;
+
+  const jmp = document.getElementById('pageJump');
+  jmp.innerHTML = Array.from({ length: curBinder.pages }, (_, i) =>
+    `<option value="${i+1}">P.${i+1}</option>`).join('');
+
+  navTo('binder');
+  renderGrid();
+  if (addOpen) apLoad();
+}
+
+function delBinder() {
+  if (!curBinder || !confirm(`Supprimer « ${curBinder.name} » ?`)) return;
+  S.binders = S.binders.filter(b => b.id !== curBinder.id);
+  curBinder = null;
+  save(); navTo('home'); updateHdrStat();
+}
+
+function delBinderById(id) {
+  const b = S.binders.find(x => x.id === id);
+  if (!b || !confirm(`Supprimer « ${b.name} » ?`)) return;
+  S.binders = S.binders.filter(x => x.id !== id);
+  if (curBinder?.id === id) curBinder = null;
+  save(); renderBinders(); updateHdrStat();
+}
+
+// ════════════════════════════════════════════
+// BINDER GRID
+// ════════════════════════════════════════════
+function renderGrid() {
+  if (!curBinder) return;
+  const { cols, rows } = curBinder;
+  const total = cols * rows;
+
+  document.getElementById('pageInd').textContent = `${curPage} / ${curBinder.pages}`;
+  document.getElementById('bookPg').textContent  = `Page ${curPage}`;
+  document.getElementById('prevBtn').disabled    = curPage === 1;
+  document.getElementById('nextBtn').disabled    = curPage === curBinder.pages;
+  document.getElementById('edgeL').disabled      = curPage === 1;
+  document.getElementById('edgeR').disabled      = curPage === curBinder.pages;
+  document.getElementById('pageJump').value      = curPage;
+
+  const g = document.getElementById('cardGrid');
+  g.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+  g.innerHTML = '';
+
+  for (let i = 0; i < total; i++) {
+    const card = curBinder.cards.find(c => c.page === curPage && c.pos === i);
+    const slot = document.createElement('div');
+    slot.className = 'slot';
+
+    if (card) {
+      slot.innerHTML = `
+        <img src="${card.img}" loading="lazy" title="${esc(card.name)}"/>
+        <span class="slot-num">${esc(String(card.number || ''))}</span>
+        <button class="slot-rm" onclick="removeCard(event,${i})">✕</button>`;
+      slot.onclick = () => openCardMod(card);
+    } else {
+      slot.innerHTML = `<span class="slot-empty">＋</span>`;
+    }
+
+    slot.ondragover  = e => { e.preventDefault(); slot.classList.add('dov'); };
+    slot.ondragleave = ()  => slot.classList.remove('dov');
+    slot.ondrop      = e  => { e.preventDefault(); slot.classList.remove('dov'); dropCard(i); };
+    g.appendChild(slot);
+  }
+}
+
+function changePage(d) {
+  if (!curBinder) return;
+  const np = curPage + d;
+  if (np < 1 || np > curBinder.pages) return;
+  const g = document.getElementById('cardGrid');
+  g.style.opacity = '0';
+  setTimeout(() => {
+    curPage = np;
+    renderGrid();
+    g.classList.add('anim');
+    g.style.opacity = '1';
+    setTimeout(() => g.classList.remove('anim'), 240);
+  }, 100);
+}
+
+function jumpPage(v) { curPage = v; renderGrid(); }
+
+// ── Keyboard navigation: ← → to flip pages while in binder view ──
+document.addEventListener('keydown', e => {
+  const inBinder = document.getElementById('viewBinder').classList.contains('on');
+  if (!inBinder || !curBinder) return;
+  // Don't hijack arrows while typing in an input/select
+  const tag = document.activeElement?.tagName;
+  if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+  if (e.key === 'ArrowLeft')  { changePage(-1); }
+  if (e.key === 'ArrowRight') { changePage(1); }
+});
+
+// ── Touch swipe navigation on the binder canvas (mobile) ──
+(function initSwipe() {
+  const canvas = document.getElementById('binderCanvas');
+  if (!canvas) return;
+  let startX = 0, startY = 0, tracking = false;
+
+  canvas.addEventListener('touchstart', e => {
+    if (!curBinder) return;
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    tracking = true;
+  }, { passive: true });
+
+  canvas.addEventListener('touchend', e => {
+    if (!tracking || !curBinder) return;
+    tracking = false;
+    const dx = e.changedTouches[0].clientX - startX;
+    const dy = e.changedTouches[0].clientY - startY;
+    // Only trigger on mostly-horizontal swipes, ignore vertical scrolling
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      if (dx < 0) changePage(1);   // swipe left  → next page
+      else        changePage(-1); // swipe right → prev page
+    }
+  }, { passive: true });
+})();
+
+function dropCard(pos) {
+  if (!drag || !curBinder) return;
+  curBinder.cards = curBinder.cards.filter(c => !(c.page === curPage && c.pos === pos));
+  curBinder.cards.push({ page: curPage, pos, ...drag });
+  save(); renderGrid(); refreshApMarks();
+  toast(`${drag.name} ajouté · p.${curPage}`, 'ok');
+  drag = null;
+}
+
+function removeCard(e, pos) {
+  e.stopPropagation();
+  curBinder.cards = curBinder.cards.filter(c => !(c.page === curPage && c.pos === pos));
+  save(); renderGrid();
+}
+
+// ════════════════════════════════════════════
+// ADD PANEL
+// ════════════════════════════════════════════
+function toggleAddPanel() {
+  addOpen = !addOpen;
+  document.getElementById('addPanel').classList.toggle('closed', !addOpen);
+  document.getElementById('togAP').style.color = addOpen ? 'var(--gold)' : '';
+  if (addOpen) apLoad();
+}
+
+function apDebounce() {
+  clearTimeout(apTimer);
+  apTimer = setTimeout(() => { apPg = 1; apLoad(); }, 380);
+}
+
+// Cache of fully-loaded set card lists (brief), keyed by `${lang}__${setId}`
+const setCardsCache = {};
+
+async function fetchSetCards(setId, lang) {
+  const key = `${lang}__${setId}`;
+  if (setCardsCache[key]) return setCardsCache[key];
+  const data = await tcgFetch(`sets/${setId}`, { lang });
+  const cards = data?.cards || [];
+  setCardsCache[key] = cards;
+  return cards;
+}
+
+async function apLoad(pg = 1) {
+  apPg = pg;
+  const set = document.getElementById('apSet').value;
+  const q   = document.getElementById('apQ').value.trim().toLowerCase();
+
+  const grid = document.getElementById('apGrid');
+  document.getElementById('apPag').innerHTML = '';
+
+  if (!set) {
+    grid.innerHTML = '<div class="empty"><div class="empty-ico">📘</div><p>Choisis une extension ci-dessus</p></div>';
+    document.getElementById('apLabel').textContent = 'Ajouter';
+    return;
+  }
+
+  const setInfo = (setsFlatByLang[apLang] || []).find(s => s.id === set);
+  document.getElementById('apLabel').textContent = setInfo?.name || 'Ajouter';
+
+  grid.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+  try {
+    let cards = await fetchSetCards(set, apLang);
+    if (q) cards = cards.filter(c => c.name.toLowerCase().includes(q));
+    apTot = cards.length;
+    grid.innerHTML = '';
+
+    if (!cards.length) {
+      grid.innerHTML = '<div class="empty"><div class="empty-ico">🔍</div><p>Aucune carte</p></div>';
+      return;
+    }
+
+    const pageSize = 12;
+    const slice = cards.slice((apPg - 1) * pageSize, apPg * pageSize);
+    slice.forEach(c => grid.appendChild(makeApCard(c, setInfo)));
+    renderApPag(pageSize);
+  } catch(e) {
+    grid.innerHTML = '<div class="empty"><div class="empty-ico">⚠️</div><p>Erreur de chargement — réessaie</p></div>';
+  }
+}
+
+function makeApCard(c, setInfo) {
+  const inB = curBinder?.cards.some(x => x.apiId === c.id);
+  const el  = document.createElement('div');
+  el.className  = 'apc' + (inB ? ' inc' : '');
+  el.draggable  = true;
+  el.title = 'Cliquer pour ajouter au prochain emplacement libre';
+  const cd = mkCardData(c, setInfo, apLang);
+  const thumb = tcgImg(c.image, 'low');
+  el.innerHTML  = `
+    <img src="${thumb}" loading="lazy"/>
+    <div class="apc-num">${esc(c.localId || '')}</div>
+    <div class="apc-name">${esc(c.name)}</div>
+    <button class="apc-eye" title="Voir / choisir l'emplacement">👁</button>`;
+  el.ondragstart = () => drag = cd;
+  // Click anywhere on the card = instant quick-add (fastest path)
+  el.onclick = e => {
+    if (e.target.classList.contains('apc-eye')) return;
+    quickAdd(cd);
+  };
+  // Eye button = open detail modal to pick exact slot / view info
+  el.querySelector('.apc-eye').onclick = e => {
+    e.stopPropagation();
+    openCardMod({ ...cd, img: tcgImg(c.image, 'high') });
+  };
+  return el;
+}
+
+function refreshApMarks() {
+  document.querySelectorAll('#apGrid .apc').forEach(el => {
+    const img = el.querySelector('img');
+    if (!img) return;
+    const inB = curBinder?.cards.some(x => x.img === img.src || x.imgL === img.src);
+    el.classList.toggle('inc', !!inB);
+  });
+}
+
+function renderApPag(pageSize = 12) {
+  const tp = Math.ceil(apTot / pageSize);
+  const el = document.getElementById('apPag');
+  if (tp <= 1) { el.innerHTML = ''; return; }
+  el.innerHTML = `
+    <button ${apPg===1?'disabled':''} onclick="apLoad(${apPg-1})">‹</button>
+    <span>${apPg} / ${tp}</span>
+    <button ${apPg===tp?'disabled':''} onclick="apLoad(${apPg+1})">›</button>`;
+}
+
+function quickAdd(card) {
+  if (!curBinder) { toast('Ouvre un classeur d\'abord !', 'err'); return; }
+  const { cols, rows } = curBinder;
+  for (let p = curPage; p <= curBinder.pages; p++) {
+    for (let i = 0; i < cols * rows; i++) {
+      if (!curBinder.cards.find(c => c.page === p && c.pos === i)) {
+        curBinder.cards.push({ page: p, pos: i, ...card });
+        save();
+        if (p === curPage) renderGrid();
+        refreshApMarks();
+        toast(`${card.name} → ${curBinder.name} p.${p}`, 'ok');
+        return;
+      }
+    }
+  }
+  toast(`${curBinder.name} est plein !`, 'err');
+}
+
+async function apAddAll() {
+  const set = document.getElementById('apSet').value;
+  if (!set)         { toast('Sélectionne un set !', 'err'); return; }
+  if (!curBinder)   { toast('Ouvre un classeur !', 'err'); return; }
+  toast('Chargement du set…');
+  try {
+    const setInfo = (setsFlatByLang[apLang] || []).find(s => s.id === set);
+    const all = await fetchSetCards(set, apLang);
+    const { cols, rows } = curBinder;
+    let added = 0;
+    for (const c of all) {
+      if (curBinder.cards.find(x => x.apiId === c.id)) continue;
+      const cd = mkCardData(c, setInfo, apLang);
+      let placed = false;
+      for (let p = 1; p <= curBinder.pages && !placed; p++)
+        for (let i = 0; i < cols * rows && !placed; i++)
+          if (!curBinder.cards.find(x => x.page === p && x.pos === i)) {
+            curBinder.cards.push({ page: p, pos: i, ...cd });
+            added++; placed = true;
+          }
+    }
+    save(); renderGrid(); updateHdrStat();
+    toast(`${added} cartes ajoutées !`, 'ok');
+  } catch(e) { toast('Erreur de chargement du set', 'err'); }
+}
+
+function mkCardData(c, setInfo, lang) {
+  return {
+    name:   c.name,
+    img:    tcgImg(c.image, 'low'),
+    imgL:   tcgImg(c.image, 'high'),
+    set:    setInfo?.name || c.set?.name || '',
+    setId:  setInfo?.id   || c.set?.id   || '',
+    number: c.localId || '',
+    apiId:  c.id,
+    lang:   lang || 'en'
+  };
+}
+
+// ════════════════════════════════════════════
+// COLLECTION VIEW
+// ════════════════════════════════════════════
+async function loadColSet(setId, setName, lang) {
+  curSetId = setId; curSetName = setName; curSetLang = lang || 'en';
+  renderSetsPanel();
+  document.getElementById('colTitle').textContent = setName;
+  document.getElementById('colGrid').innerHTML = '<div class="loading"><div class="spinner"></div> Chargement…</div>';
+  document.getElementById('colStats').innerHTML = '';
+
+  try {
+    colCards = await fetchSetCards(setId, curSetLang);
+    renderColCards();
+  } catch(e) {
+    document.getElementById('colGrid').innerHTML = '<div class="empty"><div class="empty-ico">⚠️</div><p>Erreur de chargement — réessaie</p></div>';
+  }
+}
+
+function renderColCards() {
+  updateColBinderPill();
+  const sort  = document.getElementById('colSort')?.value || 'num';
+  const cards = [...colCards];
+  const lang  = curSetLang || 'en';
+
+  if (sort === 'name') cards.sort((a,b) => a.name.localeCompare(b.name));
+  else cards.sort((a,b) => {
+    const an = parseInt(a.localId), bn = parseInt(b.localId);
+    if (!isNaN(an) && !isNaN(bn)) return an - bn;
+    return String(a.localId).localeCompare(String(b.localId));
+  });
+
+  const owned  = cards.filter(c => S.owned[`${lang}__${curSetId}__${c.id}`]);
+  const pct    = cards.length ? Math.round(owned.length / cards.length * 100) : 0;
+  const statEl = document.getElementById('colStats');
+  statEl.innerHTML = `
+    <span class="col-stat-pill ${owned.length === 0 ? 'zero' : ''}">${owned.length} / ${cards.length}</span>
+    <span style="font-size:.68rem;color:var(--fog)">${pct}%</span>
+    <div style="width:60px;height:3px;background:var(--line2);border-radius:2px;overflow:hidden">
+      <div style="height:3px;background:var(--green);width:${pct}%;transition:width .5s"></div>
+    </div>`;
+
+  const setInfo = (setsFlatByLang[lang] || []).find(s => s.id === curSetId);
+  const g = document.getElementById('colGrid');
+  g.innerHTML = '';
+
+  cards.forEach(c => {
+    const key    = `${lang}__${curSetId}__${c.id}`;
+    const owned  = !!S.owned[key];
+    const thumb  = tcgImg(c.image, 'low');
+    const el     = document.createElement('div');
+    el.className = 'pcx-card' + (owned ? ' owned' : '');
+    el.innerHTML = `
+      <img src="${thumb}" loading="lazy" alt="${esc(c.name)}"/>
+      <img class="pcx-zoom" src="${thumb}" loading="lazy"/>
+      <span class="pcx-card-num">${esc(c.localId || '')}</span>
+      <div class="pcx-card-name">${esc(c.name)}</div>
+      <button class="pcx-card-add" title="Ajouter au classeur actif (clic droit = choisir la page)">+</button>`;
+
+    // toggle owned
+    el.addEventListener('click', e => {
+      if (e.target.classList.contains('pcx-card-add')) return;
+      if (owned) delete S.owned[key]; else S.owned[key] = true;
+      save(); renderColCards(); renderSetsPanel(); updateHdrStat();
+    });
+
+    el.querySelector('.pcx-card-add').onclick = e => {
+      e.stopPropagation();
+      const cd = mkCardData(c, setInfo, lang);
+      // If a binder is already open, quick-add to next free slot (fast path).
+      // Otherwise (or with no binder open yet) fall back to the slot picker.
+      if (curBinder) quickAdd(cd);
+      else openSlotMod(cd);
+    };
+
+    // Right-click (or long-press) → open slot picker for manual placement
+    el.addEventListener('contextmenu', e => {
+      e.preventDefault();
+      openSlotMod(mkCardData(c, setInfo, lang));
+    });
+
+    el.draggable = true;
+    el.ondragstart = () => drag = mkCardData(c, setInfo, lang);
+
+    g.appendChild(el);
+  });
+
+  updateHdrStat();
+}
+
+function colAll(state) {
+  const lang = curSetLang || 'en';
+  colCards.forEach(c => {
+    const key = `${lang}__${curSetId}__${c.id}`;
+    if (state) S.owned[key] = true; else delete S.owned[key];
+  });
+  save(); renderColCards(); renderSetsPanel(); updateHdrStat();
+  toast(state ? 'Toutes cochées ✔' : 'Décochées', state ? 'ok' : 'err');
+}
+
+function showColEmpty() {
+  document.getElementById('colTitle').textContent = 'Ma collection';
+  document.getElementById('colStats').innerHTML = '';
+  document.getElementById('colGrid').innerHTML = '<div class="empty"><div class="empty-ico">👈</div><p>Sélectionne un set dans le panneau gauche</p></div>';
+  updateColBinderPill();
+}
+
+function updateColBinderPill() {
+  const el = document.getElementById('colActiveBinder');
+  if (!el) return;
+  if (curBinder) {
+    el.innerHTML = `📘 Ajout direct dans <b style="color:var(--gold)">${esc(curBinder.name)}</b>`;
+  } else if (S.binders.length) {
+    el.innerHTML = `📘 Aucun classeur ouvert — choix manuel à chaque ajout`;
+  } else {
+    el.innerHTML = `📘 Crée un classeur pour pouvoir y ajouter des cartes`;
+  }
+}
+
+// ════════════════════════════════════════════
+// SLOT MODAL
+// ════════════════════════════════════════════
+function openSlotMod(card) {
+  if (!S.binders.length) { toast('Crée un classeur d\'abord !', 'err'); return; }
+  pendCard = card;
+  smPage   = curBinder ? curPage : 1;
+  if (!curBinder) curBinder = S.binders[0];
+
+  const sel = document.getElementById('smBind');
+  sel.innerHTML = S.binders.map(b =>
+    `<option value="${b.id}"${b.id===curBinder.id?' selected':''}>${esc(b.name)}</option>`).join('');
+  renderSmGrid();
+  document.getElementById('slotModal').classList.add('open');
+}
+
+function renderSmGrid() {
+  const bid = +document.getElementById('smBind').value;
+  const b   = S.binders.find(x => x.id === bid) || curBinder;
+  if (!b) return;
+  document.getElementById('smPgInfo').textContent = `P.${smPage} / ${b.pages}`;
+  const g = document.getElementById('smGrid');
+  g.style.gridTemplateColumns = `repeat(${b.cols}, 1fr)`;
+  g.innerHTML = '';
+  for (let i = 0; i < b.cols * b.rows; i++) {
+    const occ = b.cards.find(c => c.page === smPage && c.pos === i);
+    const d   = document.createElement('div');
+    d.className = 'sm-slot' + (occ ? ' occ' : '');
+    d.innerHTML = occ
+      ? `<img src="${occ.img}"/>`
+      : `<div class="sm-slot-empty">＋</div>`;
+    if (!occ) d.onclick = () => {
+      b.cards.push({ page: smPage, pos: i, ...pendCard });
+      save(); closeSlotMod();
+      if (curBinder?.id === b.id) renderGrid();
+      toast(`${pendCard.name} → ${b.name} p.${smPage}`, 'ok');
+    };
+    g.appendChild(d);
+  }
+}
+
+function smDir(d) {
+  const bid = +document.getElementById('smBind').value;
+  const b   = S.binders.find(x => x.id === bid) || curBinder;
+  const np  = smPage + d;
+  if (!b || np < 1 || np > b.pages) return;
+  smPage = np; renderSmGrid();
+}
+
+function closeSlotMod() { document.getElementById('slotModal').classList.remove('open'); pendCard = null; }
+
+// ════════════════════════════════════════════
+// CARD MODAL
+// ════════════════════════════════════════════
+function openCardMod(card) {
+  mCard = card;
+  document.getElementById('mName').textContent = card.name;
+  document.getElementById('mImg').src = card.imgL || card.img || '';
+  document.getElementById('mMeta').innerHTML = `
+    ${card.set    ? `<b>Extension :</b> ${esc(card.set)}<br>` : ''}
+    ${card.number ? `<b>N° :</b> ${esc(String(card.number))}<br>` : ''}
+    <span id="mRarityLine" style="color:var(--fog)">Chargement des détails…</span>`;
+  const lang    = card.lang || 'en';
+  const key     = card.setId && card.apiId ? `${lang}__${card.setId}__${card.apiId}` : '';
+  const isOwned = key && !!S.owned[key];
+  const btn     = document.getElementById('mOwnBtn');
+  btn.textContent = isOwned ? '★ Possédée' : '☆ Posséder';
+  btn.style.color = isOwned ? 'var(--green)' : '';
+  btn.style.borderColor = isOwned ? 'var(--green)' : '';
+  document.getElementById('cardModal').classList.add('open');
+
+  // Lazy-load full card detail (rarity, illustrator) — brief lists don't include it
+  if (card.apiId) {
+    tcgFetch(`cards/${card.apiId}`, { lang })
+      .then(full => {
+        const line = document.getElementById('mRarityLine');
+        if (!line) return; // modal closed/replaced in the meantime
+        line.textContent = full?.rarity ? `Rareté : ${full.rarity}` : 'Rareté inconnue';
+      })
+      .catch(() => {
+        const line = document.getElementById('mRarityLine');
+        if (line) line.textContent = '';
+      });
+  }
+}
+
+function mAddBinder() { closeMod(); openSlotMod(mCard); }
+
+function mToggleOwn() {
+  if (!mCard) return;
+  const lang = mCard.lang || 'en';
+  const key  = mCard.setId && mCard.apiId ? `${lang}__${mCard.setId}__${mCard.apiId}` : '';
+  if (!key) { toast('Carte non identifiable', 'err'); return; }
+  if (S.owned[key]) delete S.owned[key]; else S.owned[key] = true;
+  save(); openCardMod(mCard);
+  if (document.getElementById('viewCol').classList.contains('on')) renderColCards();
+  updateHdrStat(); renderSetsPanel();
+}
+
+function closeMod() { document.getElementById('cardModal').classList.remove('open'); }
+
+document.querySelectorAll('.overlay').forEach(o => {
+  o.addEventListener('click', e => { if (e.target === o) { closeMod(); closeSlotMod(); } });
+});
+
+// ════════════════════════════════════════════
+// UTILS
+// ════════════════════════════════════════════
+function save() {
+  // Always keep local copy for speed
+  try { localStorage.setItem(SK + '_cache', JSON.stringify(S)); } catch(e) {}
+
+  // Sync to Firestore if user is logged in
+  if (!window._bUid) return;
+  clearTimeout(window._saveTimer);
+  window._saveTimer = setTimeout(async function() {
+    try {
+      const ref = window._bDoc(window._bDb, 'binders', window._bUid);
+      // Firestore has 1MB doc limit — strip sets cache before saving
+      const toSave = { binders: S.binders, owned: S.owned };
+      await window._bSetDoc(ref, toSave);
+    } catch(e) { console.warn('Firestore save error:', e); toast('Erreur synchro', 'err'); }
+  }, 900);
+}
+
+function updateHdrStat() {
+  const total  = Object.keys(S.owned).length;
+  const nbind  = S.binders.length;
+  document.getElementById('hdrStat').innerHTML =
+    `<b>${total}</b> cartes possédées · <b>${nbind}</b> classeur${nbind !== 1 ? 's' : ''}`;
+}
+
+let _toastT;
+function toast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className   = 'toast on' + (type ? ' ' + type : '');
+  clearTimeout(_toastT);
+  _toastT = setTimeout(() => t.classList.remove('on'), 2800);
+}
+
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
