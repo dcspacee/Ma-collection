@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<link rel="icon" type="image/png" href="favicon.png"/>
+<link rel="apple-touch-icon" href="favicon-180.png"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Items — My Collection TCG</title>
+
+<script type="module">
+import { initializeApp }                        from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc }   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const cfg = {
+  apiKey:"AIzaSyCgCTF7sndU-q-eFvwiTKz_8C0a3JfZ0H4",
+  authDomain:"ma-collection-69003.firebaseapp.com",
+  projectId:"ma-collection-69003",
+  storageBucket:"ma-collection-69003.firebasestorage.app",
+  messagingSenderId:"902502189555",
+  appId:"1:902502189555:web:db73883fe242306da96a86"
+};
+const app=initializeApp(cfg), auth=getAuth(app), db=getFirestore(app);
+window._auth=auth; window._db=db;
+window._signOut=signOut; window._doc=doc;
+window._setDoc=setDoc; window._getDoc=getDoc;
+
+onAuthStateChanged(auth, async user=>{
+  if(!user){window.location.href='index.html';return;}
+  window._uid=user.uid;
+  window._email=user.email||user.displayName||'';
+  document.getElementById('hdrEmail').textContent=window._email;
+  try{
+    const snap=await getDoc(doc(db,'items_v1',user.uid));
+    if(snap.exists()){const d=snap.data(); S.items=d.items||[];}
+  }catch(e){console.warn('load:',e);}
+  if(window._ready) window._ready();
+});
+</script>
+
+<style>
+:root{
+  --bg:#05080d; --s1:#0c1520; --s2:#111f2e; --s3:#16273a;
+  --bd:#1a2e42; --bd2:#223344;
+  --gold:#f5c400; --green:#22c55e; --red:#ef4444;
+  --blue:#3b82f6; --purple:#a855f7; --orange:#f97316;
+  --fog:#4a6278; --mist:#7a96aa; --snow:#dce8f2;
+  --r:10px; --shadow:0 8px 32px rgba(0,0,0,.6);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{font-size:16px;}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--snow);min-height:100vh;-webkit-font-smoothing:antialiased;}
+::-webkit-scrollbar{width:5px;} ::-webkit-scrollbar-track{background:transparent;} ::-webkit-scrollbar-thumb{background:var(--bd);border-radius:4px;}
+
+/* HEADER */
+.hdr{height:54px;background:linear-gradient(135deg,#0a1220,#0f1c2e);border-bottom:1px solid var(--bd);display:flex;align-items:center;padding:0 20px;gap:12px;position:sticky;top:0;z-index:200;box-shadow:0 2px 16px rgba(0,0,0,.5);}
+.home-link{display:flex;align-items:center;gap:7px;text-decoration:none;color:var(--mist);font-size:.82rem;font-weight:700;padding:5px 12px;border-radius:8px;border:1px solid var(--bd);transition:all .18s;flex-shrink:0;}
+.home-link:hover{color:var(--gold);border-color:rgba(245,196,0,.4);background:rgba(245,196,0,.06);}
+.hdr-sep{width:1px;height:26px;background:var(--bd);}
+.hdr-logo{font-size:1.05rem;font-weight:800;color:var(--snow);letter-spacing:-.3px;display:flex;align-items:center;gap:7px;}
+.hdr-logo em{color:var(--gold);font-style:normal;}
+.bolt{width:24px;height:24px;background:var(--gold);clip-path:polygon(60% 0%,100% 40%,65% 45%,100% 100%,35% 55%,70% 50%,30% 0%);}
+.hdr-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
+.hdr-email{font-size:.74rem;color:var(--fog);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.btn-logout{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);color:#f87171;padding:5px 11px;border-radius:7px;font-size:.74rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;}
+.btn-logout:hover{background:rgba(239,68,68,.2);}
+
+/* LAYOUT */
+.app{display:flex;height:calc(100vh - 54px);overflow:hidden;}
+
+/* SIDEBAR */
+.sidebar{width:260px;min-width:260px;background:var(--s1);border-right:1px solid var(--bd);display:flex;flex-direction:column;overflow:hidden;}
+.sb-head{padding:16px;border-bottom:1px solid var(--bd);}
+.sb-title{font-size:.65rem;font-weight:700;color:var(--fog);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px;}
+
+/* STAT BLOCKS in sidebar */
+.sb-stat{background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);padding:12px 14px;margin-bottom:8px;}
+.sb-stat-label{font-size:.65rem;font-weight:700;color:var(--fog);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px;}
+.sb-stat-val{font-size:1.4rem;font-weight:900;color:var(--snow);}
+.sb-stat-val.gold{color:var(--gold);}
+.sb-stat-val.green{color:var(--green);}
+.sb-stat-val.blue{color:var(--blue);}
+.sb-stat-sub{font-size:.7rem;color:var(--mist);margin-top:2px;}
+
+.sb-filters{flex:1;overflow-y:auto;padding:14px;}
+.sb-filter-title{font-size:.65rem;font-weight:700;color:var(--fog);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;margin-top:14px;}
+.sb-filter-title:first-child{margin-top:0;}
+
+.filter-chip{display:flex;align-items:center;gap:7px;padding:7px 10px;border-radius:7px;cursor:pointer;transition:background .12s;font-size:.84rem;}
+.filter-chip:hover{background:var(--s2);}
+.filter-chip.on{background:rgba(245,196,0,.09);color:var(--gold);}
+.filter-chip .chip-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.filter-chip .chip-count{margin-left:auto;font-size:.68rem;color:var(--fog);background:var(--s2);padding:1px 6px;border-radius:10px;}
+
+/* MAIN */
+.main-area{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.main-bar{padding:14px 20px;background:var(--s1);border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex-shrink:0;}
+.main-bar-title{font-size:1rem;font-weight:800;flex:1;}
+.search-box{background:var(--s2);border:1px solid var(--bd2);color:var(--snow);padding:8px 13px;border-radius:8px;font-size:.86rem;outline:none;width:220px;font-family:inherit;transition:border-color .15s;}
+.search-box:focus{border-color:var(--gold);}
+.search-box::placeholder{color:var(--fog);}
+.view-toggle{display:flex;background:var(--s2);border:1px solid var(--bd);border-radius:8px;overflow:hidden;}
+.vt-btn{background:transparent;border:none;color:var(--mist);padding:7px 11px;cursor:pointer;font-size:.9rem;transition:all .15s;}
+.vt-btn.on{background:rgba(245,196,0,.12);color:var(--gold);}
+.vt-btn:hover:not(.on){background:rgba(255,255,255,.05);}
+
+/* CONTENT */
+.content{flex:1;overflow-y:auto;padding:20px;}
+
+/* GRID VIEW */
+.items-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:16px;}
+.item-card{background:var(--s1);border:1px solid var(--bd);border-radius:14px;overflow:hidden;transition:transform .18s cubic-bezier(.22,.68,0,1.2),box-shadow .18s,border-color .18s;cursor:pointer;position:relative;}
+.item-card:hover{transform:translateY(-4px);box-shadow:0 16px 40px rgba(0,0,0,.6);border-color:var(--bd2);}
+.item-card-img{width:100%;height:160px;object-fit:cover;display:block;background:var(--s2);}
+.item-card-img-placeholder{width:100%;height:160px;background:linear-gradient(135deg,var(--s2),var(--s3));display:flex;align-items:center;justify-content:center;font-size:3rem;}
+.item-card-body{padding:12px 14px 14px;}
+.item-card-name{font-size:.95rem;font-weight:800;margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.item-card-chips{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;}
+.chip{font-size:.65rem;font-weight:700;padding:2px 8px;border-radius:20px;border:1px solid;white-space:nowrap;}
+.chip-game-pokemon  {background:rgba(250,204,21,.1);border-color:rgba(250,204,21,.3);color:#fde68a;}
+.chip-game-op       {background:rgba(239,68,68,.1); border-color:rgba(239,68,68,.3); color:#fca5a5;}
+.chip-game-lorcana  {background:rgba(168,85,247,.1);border-color:rgba(168,85,247,.3);color:#d8b4fe;}
+.chip-game-magic    {background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.3);color:#fcd34d;}
+.chip-game-autre    {background:rgba(107,114,128,.1);border-color:rgba(107,114,128,.3);color:#9ca3af;}
+.chip-sealed{background:rgba(34,197,94,.1);border-color:rgba(34,197,94,.3);color:#86efac;}
+.chip-opened{background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.3);color:#fcd34d;}
+.chip-damaged{background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.3);color:#fca5a5;}
+.item-card-prices{display:flex;justify-content:space-between;align-items:flex-end;margin-top:8px;}
+.price-label{font-size:.63rem;color:var(--fog);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;}
+.price-val{font-size:1rem;font-weight:800;}
+.price-val.buy{color:var(--snow);}
+.price-val.market{color:var(--gold);}
+.item-card-acts{position:absolute;top:8px;right:8px;display:flex;gap:4px;opacity:0;transition:opacity .15s;}
+.item-card:hover .item-card-acts{opacity:1;}
+.icon-btn{background:rgba(0,0,0,.65);border:none;color:#fff;width:28px;height:28px;border-radius:7px;cursor:pointer;font-size:.78rem;display:flex;align-items:center;justify-content:center;transition:background .15s;}
+.icon-btn:hover{background:rgba(0,0,0,.9);}
+.collection-badge{position:absolute;bottom:8px;right:8px;background:rgba(59,130,246,.85);color:#fff;font-size:.6rem;font-weight:700;padding:2px 7px;border-radius:10px;pointer-events:none;}
+
+/* TABLE VIEW */
+.items-table{width:100%;border-collapse:collapse;}
+.items-table th{text-align:left;padding:10px 14px;font-size:.7rem;font-weight:700;color:var(--fog);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--bd);background:var(--s1);position:sticky;top:0;}
+.items-table td{padding:12px 14px;border-bottom:1px solid var(--bd);font-size:.88rem;vertical-align:middle;}
+.items-table tr:hover td{background:var(--s2);}
+.items-table tr:last-child td{border-bottom:none;}
+.td-img{width:44px;height:44px;object-fit:cover;border-radius:6px;background:var(--s2);}
+.td-img-ph{width:44px;height:44px;border-radius:6px;background:var(--s2);display:flex;align-items:center;justify-content:center;font-size:1.3rem;}
+.td-name{font-weight:700;}
+.td-sub{font-size:.72rem;color:var(--mist);margin-top:2px;}
+.td-acts{display:flex;gap:4px;justify-content:flex-end;}
+
+/* EMPTY */
+.empty{text-align:center;padding:60px 24px;background:var(--s1);border:1px dashed var(--bd);border-radius:14px;}
+.empty-ico{font-size:3rem;margin-bottom:14px;}
+.empty h3{font-size:1.05rem;font-weight:700;margin-bottom:8px;}
+.empty p{font-size:.88rem;color:var(--mist);margin-bottom:20px;}
+
+/* BUTTONS */
+.btn{background:var(--gold);color:#000;border:none;padding:10px 18px;border-radius:9px;font-weight:800;font-size:.88rem;cursor:pointer;transition:opacity .15s,transform .1s;font-family:inherit;display:inline-flex;align-items:center;gap:7px;}
+.btn:hover{opacity:.87;} .btn:active{transform:scale(.97);}
+.btn.ghost{background:var(--s2);color:var(--snow);border:1px solid var(--bd);font-weight:600;}
+.btn.ghost:hover{border-color:var(--gold);color:var(--gold);background:rgba(245,196,0,.06);}
+.btn.sm{padding:7px 13px;font-size:.8rem;}
+.btn.danger{background:var(--red);color:#fff;}
+
+/* MODAL */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:600;align-items:flex-start;justify-content:center;overflow-y:auto;padding:32px 20px;backdrop-filter:blur(4px);}
+.overlay.open{display:flex;}
+.modal{background:var(--s1);border:1px solid var(--bd2);border-radius:16px;padding:28px;width:100%;max-width:580px;box-shadow:0 32px 64px rgba(0,0,0,.7);animation:modIn .2s cubic-bezier(.22,.68,0,1.2);margin:auto;}
+@keyframes modIn{from{opacity:0;transform:scale(.94) translateY(10px);}to{opacity:1;transform:none;}}
+.modal-title{font-size:1.15rem;font-weight:900;margin-bottom:22px;display:flex;align-items:center;gap:9px;}
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:16px;}
+.field label{font-size:.74rem;font-weight:700;color:var(--mist);text-transform:uppercase;letter-spacing:.06em;}
+input[type=text],input[type=number],input[type=url],select,textarea{background:var(--s2);border:1px solid var(--bd2);color:var(--snow);padding:11px 14px;border-radius:9px;font-size:.92rem;outline:none;width:100%;font-family:inherit;transition:border-color .18s,box-shadow .18s;}
+input:focus,select:focus,textarea:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(245,196,0,.1);}
+input::placeholder,textarea::placeholder{color:var(--fog);}
+select option{background:var(--s2);}
+.fields-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.fields-row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
+.modal-acts{display:flex;gap:8px;justify-content:flex-end;margin-top:24px;flex-wrap:wrap;}
+
+/* Collection link toggle */
+.link-toggle{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--s2);border:1px solid var(--bd2);border-radius:9px;cursor:pointer;transition:border-color .15s;}
+.link-toggle:hover{border-color:var(--blue);}
+.link-toggle.on{border-color:var(--blue);background:rgba(59,130,246,.08);}
+.link-toggle-ico{font-size:1.1rem;}
+.link-toggle-text{flex:1;font-size:.86rem;font-weight:600;}
+.link-toggle-sub{font-size:.72rem;color:var(--mist);margin-top:1px;}
+.toggle-switch{width:36px;height:20px;background:var(--bd);border-radius:20px;position:relative;transition:background .18s;flex-shrink:0;}
+.toggle-switch::after{content:'';position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:#fff;transition:left .18s;}
+.link-toggle.on .toggle-switch{background:var(--blue);}
+.link-toggle.on .toggle-switch::after{left:19px;}
+
+/* CM link row */
+.cm-link-row{display:flex;gap:8px;align-items:flex-end;}
+.cm-link-row input{flex:1;}
+.cm-link-row a{flex-shrink:0;}
+
+/* Image preview */
+.img-preview{width:100%;height:140px;object-fit:contain;border-radius:9px;background:var(--s2);border:1px solid var(--bd2);margin-top:6px;display:none;}
+.img-preview.show{display:block;}
+
+/* TOAST */
+.toast{position:fixed;bottom:20px;right:20px;background:var(--s1);border:1px solid var(--bd2);border-left:3px solid var(--gold);color:var(--snow);padding:10px 16px;border-radius:9px;font-size:.84rem;box-shadow:var(--shadow);z-index:1000;transform:translateY(80px);opacity:0;transition:transform .28s cubic-bezier(.22,.68,0,1.2),opacity .22s;pointer-events:none;max-width:280px;}
+.toast.on{transform:translateY(0);opacity:1;}
+.toast.ok{border-left-color:var(--green);} .toast.err{border-left-color:var(--red);}
+
+/* Detail overlay */
+.detail-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:700;align-items:center;justify-content:center;backdrop-filter:blur(6px);}
+.detail-overlay.open{display:flex;}
+.detail-panel{background:var(--s1);border:1px solid var(--bd2);border-radius:16px;width:100%;max-width:640px;overflow:hidden;box-shadow:0 40px 80px rgba(0,0,0,.8);animation:modIn .2s cubic-bezier(.22,.68,0,1.2);margin:20px;}
+.detail-panel-img{width:100%;max-height:280px;object-fit:contain;background:var(--s2);display:block;}
+.detail-panel-img-ph{width:100%;height:200px;background:linear-gradient(135deg,var(--s2),var(--s3));display:flex;align-items:center;justify-content:center;font-size:5rem;}
+.detail-body{padding:22px;}
+.detail-name{font-size:1.3rem;font-weight:900;margin-bottom:8px;}
+.detail-chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
+.detail-field{background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:10px 13px;}
+.detail-field-label{font-size:.65rem;font-weight:700;color:var(--fog);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;}
+.detail-field-val{font-size:.92rem;font-weight:600;}
+.detail-field-val.gold{color:var(--gold);}
+.detail-acts{display:flex;gap:8px;flex-wrap:wrap;}
+
+@media(max-width:700px){
+  .sidebar{display:none;}
+  .fields-row,.fields-row3{grid-template-columns:1fr;}
+  .items-grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr));}
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="hdr">
+  <a href="index.html" class="home-link">⚡ Accueil</a>
+  <div class="hdr-sep"></div>
+  <div class="hdr-logo"><div class="bolt"></div>My Collection <em>TCG</em></div>
+  <div class="hdr-right">
+    <span class="hdr-email" id="hdrEmail"></span>
+    <button class="btn-logout" onclick="logout()">🚪 Déconnexion</button>
+  </div>
+</header>
+
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sb-head">
+      <div class="sb-title">Statistiques</div>
+      <div class="sb-stat">
+        <div class="sb-stat-label">Total items</div>
+        <div class="sb-stat-val" id="statTotal">0</div>
+        <div class="sb-stat-sub" id="statSub">—</div>
+      </div>
+      <div class="sb-stat">
+        <div class="sb-stat-label">Investi</div>
+        <div class="sb-stat-val gold" id="statInvesti">0,00 €</div>
+      </div>
+      <div class="sb-stat">
+        <div class="sb-stat-label">Valeur marché</div>
+        <div class="sb-stat-val green" id="statMarket">0,00 €</div>
+      </div>
+      <div class="sb-stat">
+        <div class="sb-stat-label">Scellés</div>
+        <div class="sb-stat-val blue" id="statSealed">0</div>
+        <div class="sb-stat-sub" id="statOpened">0 ouverts</div>
+      </div>
+    </div>
+
+    <div class="sb-filters">
+      <!-- État -->
+      <div class="sb-filter-title">État</div>
+      <div class="filter-chip on" data-filter="etat" data-val="" onclick="toggleFilter(this)">
+        <span class="chip-dot" style="background:var(--mist)"></span> Tous
+        <span class="chip-count" id="fc-etat-all">0</span>
+      </div>
+      <div class="filter-chip" data-filter="etat" data-val="scelle" onclick="toggleFilter(this)">
+        <span class="chip-dot" style="background:var(--green)"></span> Scellé
+        <span class="chip-count" id="fc-etat-scelle">0</span>
+      </div>
+      <div class="filter-chip" data-filter="etat" data-val="ouvert" onclick="toggleFilter(this)">
+        <span class="chip-dot" style="background:var(--orange)"></span> Ouvert
+        <span class="chip-count" id="fc-etat-ouvert">0</span>
+      </div>
+      <div class="filter-chip" data-filter="etat" data-val="endommage" onclick="toggleFilter(this)">
+        <span class="chip-dot" style="background:var(--red)"></span> Endommagé
+        <span class="chip-count" id="fc-etat-endommage">0</span>
+      </div>
+
+      <!-- Jeu -->
+      <div class="sb-filter-title">Jeu</div>
+      <div class="filter-chip on" data-filter="jeu" data-val="" onclick="toggleFilter(this)">
+        <span class="chip-dot" style="background:var(--mist)"></span> Tous
+        <span class="chip-count" id="fc-jeu-all">0</span>
+      </div>
+      <div class="filter-chip" data-filter="jeu" data-val="pokemon" onclick="toggleFilter(this)">
+        <span class="chip-dot" style="background:#fde68a"></span> Pokémon
+        <span class="chip-count" id="fc-jeu-pokemon">0</span>
+      </div>
+      <div class="filter-chip" data-filter="jeu" data-val="op" onclick="toggleFilter(this)">
+        <span class="chip-dot" style="background:#fca5a5"></span> One Piece
+        <span class="chip-count" id="fc-jeu-op">0</span>
+      </div>
+      <div class="filter-chip" data-filter="jeu" data-val="lorcana" onclick="toggleFilter(this)">
+        <span class="chip-dot" style="background:#d8b4fe"></span> Lorcana
+        <span class="chip-count" id="fc-jeu-lorcana">0</span>
+      </div>
+      <div class="filter-chip" data-filter="jeu" data-val="magic" onclick="toggleFilter(this)">
+        <span class="chip-dot" style="background:#fcd34d"></span> Magic
+        <span class="chip-count" id="fc-jeu-magic">0</span>
+      </div>
+      <div class="filter-chip" data-filter="jeu" data-val="autre" onclick="toggleFilter(this)">
+        <span class="chip-dot" style="background:#9ca3af"></span> Autre
+        <span class="chip-count" id="fc-jeu-autre">0</span>
+      </div>
+
+      <!-- Type -->
+      <div class="sb-filter-title">Type</div>
+      <div class="filter-chip on" data-filter="type" data-val="" onclick="toggleFilter(this)">
+        <span class="chip-dot" style="background:var(--mist)"></span> Tous
+        <span class="chip-count" id="fc-type-all">0</span>
+      </div>
+      <div class="filter-chip" data-filter="type" data-val="display" onclick="toggleFilter(this)">
+        📦 Display <span class="chip-count" id="fc-type-display">0</span>
+      </div>
+      <div class="filter-chip" data-filter="type" data-val="etb" onclick="toggleFilter(this)">
+        🎁 ETB <span class="chip-count" id="fc-type-etb">0</span>
+      </div>
+      <div class="filter-chip" data-filter="type" data-val="tin" onclick="toggleFilter(this)">
+        🥫 Tin <span class="chip-count" id="fc-type-tin">0</span>
+      </div>
+      <div class="filter-chip" data-filter="type" data-val="deck" onclick="toggleFilter(this)">
+        🃏 Deck <span class="chip-count" id="fc-type-deck">0</span>
+      </div>
+      <div class="filter-chip" data-filter="type" data-val="blister" onclick="toggleFilter(this)">
+        🫧 Blister <span class="chip-count" id="fc-type-blister">0</span>
+      </div>
+      <div class="filter-chip" data-filter="type" data-val="booster" onclick="toggleFilter(this)">
+        ✨ Booster <span class="chip-count" id="fc-type-booster">0</span>
+      </div>
+      <div class="filter-chip" data-filter="type" data-val="accessoire" onclick="toggleFilter(this)">
+        🧰 Accessoire <span class="chip-count" id="fc-type-accessoire">0</span>
+      </div>
+      <div class="filter-chip" data-filter="type" data-val="autre" onclick="toggleFilter(this)">
+        🔹 Autre <span class="chip-count" id="fc-type-autre">0</span>
+      </div>
+
+      <!-- Lié à la collection -->
+      <div class="sb-filter-title">Collection</div>
+      <div class="filter-chip on" data-filter="linked" data-val="" onclick="toggleFilter(this)">
+        <span class="chip-dot" style="background:var(--mist)"></span> Tous
+        <span class="chip-count" id="fc-linked-all">0</span>
+      </div>
+      <div class="filter-chip" data-filter="linked" data-val="yes" onclick="toggleFilter(this)">
+        <span class="chip-dot" style="background:var(--blue)"></span> Lié à la collection
+        <span class="chip-count" id="fc-linked-yes">0</span>
+      </div>
+      <div class="filter-chip" data-filter="linked" data-val="no" onclick="toggleFilter(this)">
+        <span class="chip-dot" style="background:var(--fog)"></span> Non lié
+        <span class="chip-count" id="fc-linked-no">0</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main-area">
+    <div class="main-bar">
+      <span class="main-bar-title">📦 Mes Items</span>
+      <input class="search-box" id="searchBox" placeholder="🔍 Rechercher…" oninput="render()"/>
+      <div class="view-toggle">
+        <button class="vt-btn on" id="vt-grid" onclick="setView('grid')" title="Grille">⊞</button>
+        <button class="vt-btn" id="vt-list" onclick="setView('list')" title="Liste">☰</button>
+      </div>
+      <button class="btn" onclick="openModal()">+ Ajouter</button>
+    </div>
+    <div class="content" id="content"></div>
+  </div>
+</div>
+
+<!-- MODAL ADD/EDIT -->
+<div class="overlay" id="modalItem">
+<div class="modal">
+  <div class="modal-title" id="modalTitle">📦 Nouvel item</div>
+
+  <div class="field">
+    <label>Nom *</label>
+    <input type="text" id="iName" placeholder="Ex: Display Écarlate & Violet SV01 JP"/>
+  </div>
+
+  <div class="fields-row">
+    <div class="field">
+      <label>Jeu *</label>
+      <select id="iJeu">
+        <option value="pokemon">🟡 Pokémon</option>
+        <option value="op">🔴 One Piece</option>
+        <option value="lorcana">🟣 Lorcana</option>
+        <option value="magic">🟠 Magic</option>
+        <option value="autre">⚪ Autre</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Type *</label>
+      <select id="iType">
+        <option value="display">📦 Display</option>
+        <option value="etb">🎁 ETB</option>
+        <option value="tin">🥫 Tin</option>
+        <option value="deck">🃏 Deck</option>
+        <option value="blister">🫧 Blister</option>
+        <option value="booster">✨ Booster</option>
+        <option value="accessoire">🧰 Accessoire</option>
+        <option value="autre">🔹 Autre</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="fields-row">
+    <div class="field">
+      <label>État *</label>
+      <select id="iEtat">
+        <option value="scelle">🟢 Scellé</option>
+        <option value="ouvert">🟡 Ouvert</option>
+        <option value="endommage">🔴 Endommagé</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Quantité</label>
+      <input type="number" id="iQte" value="1" min="1"/>
+    </div>
+  </div>
+
+  <div class="fields-row">
+    <div class="field">
+      <label>Prix d'achat (€)</label>
+      <input type="number" id="iPrixAchat" placeholder="0.00" step="0.01" min="0"/>
+    </div>
+    <div class="field">
+      <label>Prix marché actuel (€)</label>
+      <input type="number" id="iPrixMarche" placeholder="0.00" step="0.01" min="0"/>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Lien Cardmarket (référence)</label>
+    <div class="cm-link-row">
+      <input type="url" id="iCmLink" placeholder="https://www.cardmarket.com/..."/>
+      <a class="btn ghost sm" id="iCmBtn" href="#" target="_blank" onclick="openCM(event)">🔍 Voir</a>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Date d'achat</label>
+    <input type="text" id="iDate" placeholder="JJ/MM/AAAA"/>
+  </div>
+
+  <div class="field">
+    <label>Image (URL)</label>
+    <input type="url" id="iImg" placeholder="https://..." oninput="previewImg()"/>
+    <img id="imgPreview" class="img-preview" alt="Aperçu"/>
+  </div>
+
+  <div class="field">
+    <label>Notes</label>
+    <textarea id="iNotes" rows="2" placeholder="Ex: Acheté en boîte, légère abîmure sur le coin..."></textarea>
+  </div>
+
+  <!-- Lien collection.html -->
+  <div class="field">
+    <label>Lier à Ma Collection (investissement)</label>
+    <div class="link-toggle" id="linkToggle" onclick="toggleLink()">
+      <span class="link-toggle-ico">💼</span>
+      <div style="flex:1">
+        <div class="link-toggle-text">Inclure dans le suivi financier</div>
+        <div class="link-toggle-sub">Cet item apparaîtra dans "Ma Collection" pour le suivi des bénéfices</div>
+      </div>
+      <div class="toggle-switch" id="linkSwitch"></div>
+    </div>
+  </div>
+
+  <div class="modal-acts">
+    <button class="btn ghost" onclick="closeModal()">Annuler</button>
+    <button class="btn danger sm" id="deleteBtn" onclick="deleteItem()" style="display:none">🗑 Supprimer</button>
+    <button class="btn" onclick="saveItem()">Enregistrer</button>
+  </div>
+</div>
+</div>
+
+<!-- DETAIL OVERLAY -->
+<div class="detail-overlay" id="detailOverlay" onclick="closeDetail(event)">
+  <div class="detail-panel">
+    <div id="detailImgWrap"></div>
+    <div class="detail-body">
+      <div class="detail-name" id="dName"></div>
+      <div class="detail-chips" id="dChips"></div>
+      <div class="detail-grid" id="dGrid"></div>
+      <div id="dNotes" style="margin-bottom:14px;display:none">
+        <div style="font-size:.7rem;font-weight:700;color:var(--fog);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Notes</div>
+        <div style="font-size:.86rem;color:var(--mist);line-height:1.5" id="dNotesText"></div>
+      </div>
+      <div id="dCmWrap" style="margin-bottom:14px;display:none">
+        <a id="dCmLink" href="#" target="_blank" class="btn ghost sm">🔍 Voir sur Cardmarket</a>
+      </div>
+      <div class="detail-acts">
+        <button class="btn sm" onclick="editFromDetail()">✏️ Modifier</button>
+        <button class="btn danger sm" onclick="deleteFromDetail()">🗑 Supprimer</button>
+        <button class="btn ghost sm" onclick="document.getElementById('detailOverlay').classList.remove('open')" style="margin-left:auto">Fermer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════
+const SK = 'items_v1';
+let S = (()=>{ try{ return JSON.parse(localStorage.getItem(SK+'_cache'))||{}; }catch{ return {}; } })();
+S.items ??= [];
+
+let viewMode  = 'grid';
+let editingId = null;
+let detailId  = null;
+let linked    = false;
+
+// active filters
+let fEtat   = '';
+let fJeu    = '';
+let fType   = '';
+let fLinked = '';
+
+// ══════════════════════════════════════════════════
+// BOOT
+// ══════════════════════════════════════════════════
+window._ready = () => { render(); updateStats(); updateCounts(); };
+
+// ══════════════════════════════════════════════════
+// LOGOUT
+// ══════════════════════════════════════════════════
+function logout(){ window._signOut(window._auth).then(()=>{ window.location.href='index.html'; }); }
+
+// ══════════════════════════════════════════════════
+// VIEW TOGGLE
+// ══════════════════════════════════════════════════
+function setView(v){
+  viewMode=v;
+  document.getElementById('vt-grid').classList.toggle('on', v==='grid');
+  document.getElementById('vt-list').classList.toggle('on', v==='list');
+  render();
+}
+
+// ══════════════════════════════════════════════════
+// FILTERS
+// ══════════════════════════════════════════════════
+function toggleFilter(el){
+  const f   = el.dataset.filter;
+  const val = el.dataset.val;
+  document.querySelectorAll(`.filter-chip[data-filter="${f}"]`).forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');
+  if(f==='etat')   fEtat   = val;
+  if(f==='jeu')    fJeu    = val;
+  if(f==='type')   fType   = val;
+  if(f==='linked') fLinked = val;
+  render();
+}
+
+function getFiltered(){
+  const q = (document.getElementById('searchBox')?.value||'').toLowerCase();
+  return S.items.filter(it=>{
+    if(fEtat   && it.etat   !== fEtat)   return false;
+    if(fJeu    && it.jeu    !== fJeu)    return false;
+    if(fType   && it.type   !== fType)   return false;
+    if(fLinked === 'yes' && !it.linked)  return false;
+    if(fLinked === 'no'  &&  it.linked)  return false;
+    if(q && !(it.name||'').toLowerCase().includes(q) &&
+             !(it.notes||'').toLowerCase().includes(q)) return false;
+    return true;
+  });
+}
+
+// ══════════════════════════════════════════════════
+// RENDER
+// ══════════════════════════════════════════════════
+function render(){
+  const items = getFiltered();
+  const el    = document.getElementById('content');
+
+  if(!S.items.length){
+    el.innerHTML=`<div class="empty"><div class="empty-ico">📦</div><h3>Aucun item pour l'instant</h3><p>Ajoute ton premier item pour commencer le suivi.</p><button class="btn" onclick="openModal()">+ Ajouter un item</button></div>`;
+    return;
+  }
+  if(!items.length){
+    el.innerHTML=`<div class="empty"><div class="empty-ico">🔍</div><h3>Aucun résultat</h3><p>Essaie d'autres filtres ou un autre terme de recherche.</p></div>`;
+    return;
+  }
+
+  if(viewMode==='grid') renderGrid(el, items);
+  else renderList(el, items);
+}
+
+const GAME_EMOJI = { pokemon:'🟡', op:'🔴', lorcana:'🟣', magic:'🟠', autre:'⚪' };
+const GAME_NAME  = { pokemon:'Pokémon', op:'One Piece', lorcana:'Lorcana', magic:'Magic', autre:'Autre' };
+const TYPE_EMOJI = { display:'📦', etb:'🎁', tin:'🥫', deck:'🃏', blister:'🫧', booster:'✨', accessoire:'🧰', autre:'🔹' };
+const ETAT_CHIP  = { scelle:'chip-sealed', ouvert:'chip-opened', endommage:'chip-damaged' };
+const ETAT_LABEL = { scelle:'Scellé', ouvert:'Ouvert', endommage:'Endommagé' };
+
+function gameChipCls(jeu){ return 'chip chip-game-'+jeu; }
+
+function renderGrid(el, items){
+  el.innerHTML = `<div class="items-grid">${items.map(it=>itemCardHTML(it)).join('')}</div>`;
+}
+
+function itemCardHTML(it){
+  const g   = GAME_EMOJI[it.jeu]||'⚪';
+  const gn  = GAME_NAME[it.jeu]||it.jeu;
+  const te  = TYPE_EMOJI[it.type]||'🔹';
+  const ec  = ETAT_CHIP[it.etat]||'chip-sealed';
+  const el  = ETAT_LABEL[it.etat]||it.etat;
+  const img = it.img
+    ? `<img class="item-card-img" src="${esc(it.img)}" onerror="this.outerHTML='<div class=item-card-img-placeholder>${te}</div>'" loading="lazy"/>`
+    : `<div class="item-card-img-placeholder">${te}</div>`;
+  const achat  = it.prixAchat  ? numFmt(it.prixAchat)  : '—';
+  const marche = it.prixMarche ? numFmt(it.prixMarche) : '—';
+  return `
+  <div class="item-card" onclick="openDetail('${it.id}')">
+    ${img}
+    <div class="item-card-acts">
+      <button class="icon-btn" onclick="event.stopPropagation();openModal('${it.id}')" title="Modifier">✏️</button>
+      <button class="icon-btn" onclick="event.stopPropagation();quickDelete('${it.id}')" title="Supprimer">🗑</button>
+    </div>
+    <div class="item-card-body">
+      <div class="item-card-name">${esc(it.name)}</div>
+      <div class="item-card-chips">
+        <span class="${gameChipCls(it.jeu)}">${g} ${gn}</span>
+        <span class="chip ${ec}">${el}</span>
+        ${it.qte>1?`<span class="chip" style="background:rgba(255,255,255,.05);border-color:var(--bd);color:var(--mist)">×${it.qte}</span>`:''}
+      </div>
+      <div class="item-card-prices">
+        <div><div class="price-label">Achat</div><div class="price-val buy">${achat}</div></div>
+        <div style="text-align:right"><div class="price-label">Marché</div><div class="price-val market">${marche}</div></div>
+      </div>
+    </div>
+    ${it.linked?`<div class="collection-badge">💼 Collection</div>`:''}
+  </div>`;
+}
+
+function renderList(el, items){
+  const rows = items.map(it=>{
+    const g   = GAME_EMOJI[it.jeu]||'⚪';
+    const te  = TYPE_EMOJI[it.type]||'🔹';
+    const ec  = ETAT_CHIP[it.etat]||'chip-sealed';
+    const el2 = ETAT_LABEL[it.etat]||it.etat;
+    const img = it.img
+      ? `<img class="td-img" src="${esc(it.img)}" loading="lazy" onerror="this.outerHTML='<div class=td-img-ph>${te}</div>'"/>`
+      : `<div class="td-img-ph">${te}</div>`;
+    const achat  = it.prixAchat  ? numFmt(it.prixAchat)  : '—';
+    const marche = it.prixMarche ? numFmt(it.prixMarche) : '—';
+    return `<tr onclick="openDetail('${it.id}')" style="cursor:pointer">
+      <td>${img}</td>
+      <td><div class="td-name">${esc(it.name)}</div><div class="td-sub">${g} ${GAME_NAME[it.jeu]||it.jeu} · ${te} ${it.type}</div></td>
+      <td><span class="chip ${ec}">${el2}</span></td>
+      <td style="color:var(--mist)">${it.qte||1}</td>
+      <td style="font-weight:700">${achat}</td>
+      <td style="color:var(--gold);font-weight:700">${marche}</td>
+      <td>${it.date||'—'}</td>
+      <td>${it.linked?'<span style="color:var(--blue);font-size:.8rem">💼 Lié</span>':'—'}</td>
+      <td><div class="td-acts">
+        <button class="icon-btn" onclick="event.stopPropagation();openModal('${it.id}')" title="Modifier">✏️</button>
+        <button class="icon-btn" onclick="event.stopPropagation();quickDelete('${it.id}')" title="Supprimer">🗑</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+
+  el.innerHTML=`<table class="items-table">
+    <thead><tr>
+      <th style="width:56px"></th>
+      <th>Nom</th><th>État</th><th>Qté</th>
+      <th>Achat</th><th>Marché</th><th>Date</th><th>Col.</th><th></th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+// ══════════════════════════════════════════════════
+// STATS & COUNTS
+// ══════════════════════════════════════════════════
+function updateStats(){
+  const all     = S.items;
+  const sealed  = all.filter(i=>i.etat==='scelle').length;
+  const opened  = all.filter(i=>i.etat==='ouvert').length;
+  const investi = all.reduce((a,i)=>a+(parseFloat(i.prixAchat)||0)*(i.qte||1),0);
+  const marche  = all.reduce((a,i)=>a+(parseFloat(i.prixMarche)||0)*(i.qte||1),0);
+  document.getElementById('statTotal').textContent   = all.length;
+  document.getElementById('statSub').textContent     = `${sealed} scellés · ${opened} ouverts`;
+  document.getElementById('statInvesti').textContent = numFmt(investi);
+  document.getElementById('statMarket').textContent  = numFmt(marche);
+  document.getElementById('statSealed').textContent  = sealed;
+  document.getElementById('statOpened').textContent  = opened+' ouverts';
+}
+
+function updateCounts(){
+  const all = S.items;
+  const cnt = (fn)=>all.filter(fn).length;
+  document.getElementById('fc-etat-all').textContent    = all.length;
+  document.getElementById('fc-etat-scelle').textContent = cnt(i=>i.etat==='scelle');
+  document.getElementById('fc-etat-ouvert').textContent = cnt(i=>i.etat==='ouvert');
+  document.getElementById('fc-etat-endommage').textContent = cnt(i=>i.etat==='endommage');
+  document.getElementById('fc-jeu-all').textContent     = all.length;
+  ['pokemon','op','lorcana','magic','autre'].forEach(j=>{
+    const el=document.getElementById('fc-jeu-'+j);
+    if(el) el.textContent=cnt(i=>i.jeu===j);
+  });
+  document.getElementById('fc-type-all').textContent    = all.length;
+  ['display','etb','tin','deck','blister','booster','accessoire','autre'].forEach(t=>{
+    const el=document.getElementById('fc-type-'+t);
+    if(el) el.textContent=cnt(i=>i.type===t);
+  });
+  document.getElementById('fc-linked-all').textContent = all.length;
+  document.getElementById('fc-linked-yes').textContent = cnt(i=>i.linked);
+  document.getElementById('fc-linked-no').textContent  = cnt(i=>!i.linked);
+}
+
+// ══════════════════════════════════════════════════
+// MODAL ADD / EDIT
+// ══════════════════════════════════════════════════
+function openModal(id){
+  editingId = id||null;
+  linked    = false;
+  const it  = id ? S.items.find(x=>x.id===id) : null;
+
+  document.getElementById('modalTitle').textContent = it ? '✏️ Modifier l\'item' : '📦 Nouvel item';
+  document.getElementById('deleteBtn').style.display = it ? 'block' : 'none';
+  document.getElementById('iName').value      = it?.name      ||'';
+  document.getElementById('iJeu').value       = it?.jeu       ||'pokemon';
+  document.getElementById('iType').value      = it?.type      ||'display';
+  document.getElementById('iEtat').value      = it?.etat      ||'scelle';
+  document.getElementById('iQte').value       = it?.qte       ||1;
+  document.getElementById('iPrixAchat').value = it?.prixAchat ||'';
+  document.getElementById('iPrixMarche').value= it?.prixMarche||'';
+  document.getElementById('iCmLink').value    = it?.cmLink    ||'';
+  document.getElementById('iDate').value      = it?.date      ||'';
+  document.getElementById('iImg').value       = it?.img       ||'';
+  document.getElementById('iNotes').value     = it?.notes     ||'';
+  linked = it?.linked || false;
+  document.getElementById('linkToggle').classList.toggle('on', linked);
+
+  const prev = document.getElementById('imgPreview');
+  if(it?.img){ prev.src=it.img; prev.classList.add('show'); } else { prev.classList.remove('show'); }
+
+  document.getElementById('modalItem').classList.add('open');
+}
+
+function closeModal(){ document.getElementById('modalItem').classList.remove('open'); editingId=null; }
+
+function toggleLink(){
+  linked = !linked;
+  document.getElementById('linkToggle').classList.toggle('on', linked);
+}
+
+function openCM(e){
+  const url = document.getElementById('iCmLink').value.trim();
+  if(!url){ e.preventDefault(); showToast('Colle d\'abord un lien Cardmarket','err'); return; }
+  document.getElementById('iCmBtn').href = url;
+}
+
+function previewImg(){
+  const url  = document.getElementById('iImg').value.trim();
+  const prev = document.getElementById('imgPreview');
+  if(url){ prev.src=url; prev.classList.add('show'); prev.onerror=()=>prev.classList.remove('show'); }
+  else prev.classList.remove('show');
+}
+
+function saveItem(){
+  const name = document.getElementById('iName').value.trim();
+  if(!name){ showToast('Le nom est obligatoire','err'); return; }
+
+  const data = {
+    name,
+    jeu:        document.getElementById('iJeu').value,
+    type:       document.getElementById('iType').value,
+    etat:       document.getElementById('iEtat').value,
+    qte:        parseInt(document.getElementById('iQte').value)||1,
+    prixAchat:  parseFloat(document.getElementById('iPrixAchat').value)||null,
+    prixMarche: parseFloat(document.getElementById('iPrixMarche').value)||null,
+    cmLink:     document.getElementById('iCmLink').value.trim()||null,
+    date:       document.getElementById('iDate').value.trim()||null,
+    img:        document.getElementById('iImg').value.trim()||null,
+    notes:      document.getElementById('iNotes').value.trim()||null,
+    linked,
+    updatedAt:  Date.now(),
+  };
+
+  if(editingId){
+    const idx = S.items.findIndex(x=>x.id===editingId);
+    if(idx>-1){ S.items[idx]={...S.items[idx],...data}; }
+    showToast('Item modifié ✔','ok');
+  } else {
+    S.items.unshift({ id: Date.now().toString(), ...data, createdAt: Date.now() });
+    showToast('Item ajouté ✔','ok');
+  }
+
+  closeModal(); save(); render(); updateStats(); updateCounts();
+}
+
+function deleteItem(){
+  if(!editingId||!confirm('Supprimer cet item ?')) return;
+  S.items=S.items.filter(x=>x.id!==editingId);
+  closeModal(); save(); render(); updateStats(); updateCounts();
+  showToast('Item supprimé','ok');
+}
+
+function quickDelete(id){
+  if(!confirm('Supprimer cet item ?')) return;
+  S.items=S.items.filter(x=>x.id!==id);
+  save(); render(); updateStats(); updateCounts();
+  showToast('Item supprimé','ok');
+}
+
+// ══════════════════════════════════════════════════
+// DETAIL
+// ══════════════════════════════════════════════════
+function openDetail(id){
+  const it = S.items.find(x=>x.id===id);
+  if(!it) return;
+  detailId = id;
+  const te = TYPE_EMOJI[it.type]||'🔹';
+
+  document.getElementById('detailImgWrap').innerHTML = it.img
+    ? `<img class="detail-panel-img" src="${esc(it.img)}" onerror="this.outerHTML='<div class=detail-panel-img-ph>${te}</div>'"/>`
+    : `<div class="detail-panel-img-ph">${te}</div>`;
+
+  document.getElementById('dName').textContent = it.name;
+
+  document.getElementById('dChips').innerHTML = `
+    <span class="${gameChipCls(it.jeu)}">${GAME_EMOJI[it.jeu]||''} ${GAME_NAME[it.jeu]||it.jeu}</span>
+    <span class="chip ${ETAT_CHIP[it.etat]||''}">${ETAT_LABEL[it.etat]||it.etat}</span>
+    <span class="chip" style="background:rgba(255,255,255,.05);border-color:var(--bd);color:var(--mist)">${TYPE_EMOJI[it.type]||''} ${it.type}</span>
+    ${it.linked?'<span class="chip" style="background:rgba(59,130,246,.12);border-color:rgba(59,130,246,.3);color:#93c5fd">💼 Lié collection</span>':''}`;
+
+  document.getElementById('dGrid').innerHTML = `
+    <div class="detail-field"><div class="detail-field-label">Prix d'achat</div><div class="detail-field-val">${it.prixAchat?numFmt(it.prixAchat)+'&nbsp;€':'—'}</div></div>
+    <div class="detail-field"><div class="detail-field-label">Prix marché</div><div class="detail-field-val gold">${it.prixMarche?numFmt(it.prixMarche)+'&nbsp;€':'—'}</div></div>
+    <div class="detail-field"><div class="detail-field-label">Quantité</div><div class="detail-field-val">${it.qte||1}</div></div>
+    <div class="detail-field"><div class="detail-field-label">Date d'achat</div><div class="detail-field-val">${it.date||'—'}</div></div>`;
+
+  const notesEl = document.getElementById('dNotes');
+  if(it.notes){ notesEl.style.display='block'; document.getElementById('dNotesText').textContent=it.notes; }
+  else notesEl.style.display='none';
+
+  const cmWrap = document.getElementById('dCmWrap');
+  if(it.cmLink){ cmWrap.style.display='block'; document.getElementById('dCmLink').href=it.cmLink; }
+  else cmWrap.style.display='none';
+
+  document.getElementById('detailOverlay').classList.add('open');
+}
+
+function closeDetail(e){ if(e.target.id==='detailOverlay') document.getElementById('detailOverlay').classList.remove('open'); }
+function editFromDetail(){ document.getElementById('detailOverlay').classList.remove('open'); openModal(detailId); }
+function deleteFromDetail(){
+  if(!detailId||!confirm('Supprimer cet item ?')) return;
+  S.items=S.items.filter(x=>x.id!==detailId);
+  document.getElementById('detailOverlay').classList.remove('open');
+  save(); render(); updateStats(); updateCounts();
+  showToast('Item supprimé','ok');
+}
+
+// ══════════════════════════════════════════════════
+// FIREBASE SYNC
+// ══════════════════════════════════════════════════
+function save(){
+  try{ localStorage.setItem(SK+'_cache',JSON.stringify(S)); }catch(e){}
+  if(!window._uid) return;
+  clearTimeout(window._saveT);
+  window._saveT=setTimeout(async()=>{
+    try{ await window._setDoc(window._doc(window._db,'items_v1',window._uid),{items:S.items}); }
+    catch(e){ console.warn('Firestore save:',e); }
+  },900);
+}
+
+// ══════════════════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════════════════
+function numFmt(n){ return parseFloat(n).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+let _toastT;
+function showToast(msg,type=''){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className='toast on'+(type?' '+type:'');
+  clearTimeout(_toastT); _toastT=setTimeout(()=>t.classList.remove('on'),2800);
+}
+
+document.querySelectorAll('.overlay').forEach(o=>{
+  o.addEventListener('click',e=>{ if(e.target===o) o.classList.remove('open'); });
+});
+</script>
+</body>
+</html>
