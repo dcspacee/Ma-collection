@@ -70,55 +70,67 @@ body::before {
 
 /* ── VIEWS ── */
 #viewLogin, #viewHub { position:relative; z-index:1; }
-/* ── DASHBOARD STATS ── */
+/* ── HUB LAYOUT WITH SIDEBAR DASHBOARD ── */
+.hub-layout {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+/* ── DASHBOARD SIDEBAR ── */
 .dash {
+  width: 220px;
+  min-width: 220px;
   background: rgba(255,255,255,.02);
   border: 1px solid rgba(255,255,255,.07);
   border-radius: 14px;
-  padding: 20px 24px;
-  margin: 0 auto 32px;
-  max-width: 960px;
+  padding: 16px;
+  position: sticky;
+  top: 20px;
 }
 .dash-title {
-  font-size: .68rem; font-weight: 700; color: #4a6278;
+  font-size: .62rem; font-weight: 700; color: #4a6278;
   text-transform: uppercase; letter-spacing: .08em;
-  margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
+  margin-bottom: 12px; display: flex; align-items: center; gap: 6px;
 }
 .dash-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 .dash-stat {
   background: rgba(255,255,255,.03);
-  border: 1px solid rgba(255,255,255,.06);
-  border-radius: 10px; padding: 14px 16px;
+  border: 1px solid rgba(255,255,255,.05);
+  border-radius: 8px;
+  padding: 9px 12px;
   transition: border-color .18s;
 }
 .dash-stat:hover { border-color: rgba(255,255,255,.12); }
 .dash-stat-label {
-  font-size: .67rem; font-weight: 700; color: #4a6278;
-  text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px;
+  font-size: .6rem; font-weight: 700; color: #4a6278;
+  text-transform: uppercase; letter-spacing: .06em; margin-bottom: 3px;
 }
 .dash-stat-val {
-  font-size: 1.5rem; font-weight: 900; color: #dce8f0; line-height: 1;
+  font-size: 1.1rem; font-weight: 900; color: #dce8f0; line-height: 1;
 }
 .dash-stat-val.gold   { color: #f5c400; }
 .dash-stat-val.green  { color: #22c55e; }
 .dash-stat-val.blue   { color: #3b82f6; }
 .dash-stat-val.purple { color: #a855f7; }
-.dash-stat-sub { font-size: .68rem; color: #4a6278; margin-top: 4px; }
-.dash-loading { color: #4a6278; font-size: .8rem; padding: 8px 0; }
+.dash-stat-sub { font-size: .62rem; color: #4a6278; margin-top: 2px; }
+.dash-loading { color: #4a6278; font-size: .75rem; padding: 4px 0; }
 
-/* ── SHORTCUTS HINT ── */
-.shortcuts-hint {
-  text-align: center; font-size: .72rem; color: #2a3a4e;
-  margin-top: -16px; margin-bottom: 24px;
+/* ── CARDS AREA ── */
+.hub-cards-wrap {
+  flex: 1;
+  min-width: 0;
 }
-.shortcuts-hint kbd {
-  background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1);
-  border-radius: 4px; padding: 1px 6px; font-size: .68rem;
-  font-family: monospace; color: #536b88;
+
+@media(max-width:780px){
+  .hub-layout { flex-direction: column; }
+  .dash { width: 100%; min-width: unset; position: static; }
 }
 
 .hidden { display:none !important; }
@@ -455,15 +467,18 @@ footer {
     <p class="hub-sub">Gère ta collection, suis tes investissements et organise tes classeurs Pokémon.</p>
 
 
-    <!-- DASHBOARD RÉSUMÉ -->
-    <div class="dash" id="dashSection">
-      <div class="dash-title">📊 Résumé de ta collection</div>
-      <div class="dash-grid" id="dashGrid">
-        <div class="dash-loading">Chargement des stats…</div>
+    <div class="hub-layout">
+      <!-- DASHBOARD SIDEBAR -->
+      <div class="dash" id="dashSection">
+        <div class="dash-title">📊 Résumé</div>
+        <div class="dash-grid" id="dashGrid">
+          <div class="dash-loading">Chargement…</div>
+        </div>
       </div>
-    </div>
 
-    <div class="hub-cards">
+      <!-- CARDS -->
+      <div class="hub-cards-wrap">
+      <div class="hub-cards">
       <!-- Mes Investissements -->
       <a href="collection.html" class="app-card card-col">
         <div class="card-icon">💹</div>
@@ -528,8 +543,10 @@ footer {
           <div class="card-title">Échanges</div>
         </div>
         <p class="card-desc">Gère tes échanges avec d'autres collectionneurs. Historique et évaluation des trades.</p>
-      </div>
-    </div>
+      </div><!-- app-card card-soon trades -->
+    </div><!-- hub-cards -->
+      </div><!-- hub-cards-wrap -->
+    </div><!-- hub-layout -->
   </main>
 
   <footer>My Collection TCG · dcspacee</footer>
