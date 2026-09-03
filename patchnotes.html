@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<link rel="icon" type="image/png" href="favicon.png"/>
+<link rel="apple-touch-icon" href="favicon-180.png"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Patch Notes — My Collection TCG</title>
+<style>
+:root{
+  --bg:#05080d;--s1:#0c1520;--s2:#111f2e;--s3:#16273a;
+  --bd:#1a2e42;--bd2:#223344;
+  --gold:#f5c400;--green:#22c55e;--red:#ef4444;
+  --blue:#3b82f6;--purple:#a855f7;--orange:#f97316;
+  --fog:#4a6278;--mist:#7a96aa;--snow:#dce8f2;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{font-size:16px;}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--snow);min-height:100vh;-webkit-font-smoothing:antialiased;}
+::-webkit-scrollbar{width:5px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--bd);border-radius:4px;}
+
+.hdr{height:54px;background:linear-gradient(135deg,#0a1220,#0f1c2e);border-bottom:1px solid var(--bd);display:flex;align-items:center;padding:0 20px;gap:12px;position:sticky;top:0;z-index:200;box-shadow:0 2px 16px rgba(0,0,0,.5);}
+.home-link{display:flex;align-items:center;gap:7px;text-decoration:none;color:var(--mist);font-size:.82rem;font-weight:700;padding:5px 12px;border-radius:8px;border:1px solid var(--bd);transition:all .18s;}
+.home-link:hover{color:var(--gold);border-color:rgba(245,196,0,.4);background:rgba(245,196,0,.06);}
+.hdr-sep{width:1px;height:26px;background:var(--bd);}
+.hdr-logo{font-size:1.05rem;font-weight:800;color:var(--snow);letter-spacing:-.3px;display:flex;align-items:center;gap:7px;}
+.hdr-logo em{color:var(--gold);font-style:normal;}
+.bolt{width:24px;height:24px;background:var(--gold);clip-path:polygon(60% 0%,100% 40%,65% 45%,100% 100%,35% 55%,70% 50%,30% 0%);}
+
+/* VERSION SELECTOR */
+.ver-nav{background:var(--s1);border-bottom:1px solid var(--bd);display:flex;gap:0;justify-content:center;padding:0;}
+.ver-btn{background:transparent;border:none;border-bottom:3px solid transparent;color:var(--fog);padding:13px 24px;font-size:.86rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .18s;display:flex;align-items:center;gap:7px;}
+.ver-btn:hover{color:var(--mist);}
+.ver-btn.on{color:var(--gold);border-bottom-color:var(--gold);}
+.ver-badge{font-size:.58rem;font-weight:800;padding:2px 7px;border-radius:10px;border:1px solid;}
+.ver-badge.current{background:rgba(245,196,0,.15);border-color:rgba(245,196,0,.35);color:var(--gold);}
+.ver-badge.old{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.1);color:var(--fog);}
+
+/* VIEWS */
+.ver-view{display:none;} .ver-view.on{display:block;}
+
+/* HERO */
+.hero{background:linear-gradient(160deg,#0a1220 0%,#0f1c2e 50%,#0d1828 100%);border-bottom:1px solid var(--bd);padding:48px 24px 40px;text-align:center;position:relative;overflow:hidden;}
+.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 60% 50% at 50% 0%,rgba(245,196,0,.08) 0%,transparent 70%);pointer-events:none;}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:.7rem;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.12em;background:rgba(245,196,0,.08);border:1px solid rgba(245,196,0,.2);padding:5px 14px;border-radius:20px;margin-bottom:18px;}
+.hero-title{font-size:2.4rem;font-weight:900;color:var(--snow);line-height:1.1;margin-bottom:10px;}
+.hero-title em{color:var(--gold);font-style:normal;}
+.hero-sub{font-size:.95rem;color:var(--mist);max-width:520px;margin:0 auto 22px;line-height:1.6;}
+.hero-date{font-size:.78rem;color:var(--fog);display:flex;align-items:center;justify-content:center;gap:8px;}
+.version-badge{display:inline-flex;align-items:center;gap:6px;font-size:.75rem;font-weight:800;background:linear-gradient(135deg,var(--gold),#e6b800);color:#000;padding:4px 12px;border-radius:20px;}
+
+/* PAGE */
+.page{max-width:860px;margin:0 auto;padding:40px 24px 80px;}
+
+/* SECTION */
+.section{margin-bottom:48px;}
+.section-eyebrow{font-size:.65rem;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;display:flex;align-items:center;gap:8px;}
+.section-eyebrow::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(245,196,0,.3),transparent);}
+.section-title{font-size:1.4rem;font-weight:900;color:var(--snow);margin-bottom:6px;}
+.section-sub{font-size:.86rem;color:var(--mist);margin-bottom:20px;line-height:1.5;}
+
+/* FEATURES */
+.features{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;margin-bottom:20px;}
+.feat{background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:16px 18px;transition:border-color .18s,transform .18s;}
+.feat:hover{border-color:var(--bd2);transform:translateY(-2px);}
+.feat-icon{font-size:1.4rem;margin-bottom:8px;display:block;}
+.feat-title{font-size:.9rem;font-weight:800;color:var(--snow);margin-bottom:4px;}
+.feat-desc{font-size:.76rem;color:var(--mist);line-height:1.5;}
+
+/* FEAT LIST */
+.feat-list{display:flex;flex-direction:column;gap:8px;}
+.feat-item{display:flex;align-items:flex-start;gap:12px;padding:12px 16px;background:var(--s1);border:1px solid var(--bd);border-radius:9px;transition:border-color .15s;}
+.feat-item:hover{border-color:var(--bd2);}
+.feat-item-icon{font-size:1rem;flex-shrink:0;margin-top:1px;}
+.feat-item-body{}
+.feat-item-title{font-size:.86rem;font-weight:700;color:var(--snow);margin-bottom:2px;}
+.feat-item-desc{font-size:.75rem;color:var(--mist);line-height:1.5;}
+
+/* TAGS */
+.tag{display:inline-block;font-size:.6rem;font-weight:700;padding:2px 8px;border-radius:20px;border:1px solid;text-transform:uppercase;letter-spacing:.05em;margin-right:4px;margin-bottom:4px;}
+.tag-new    {background:rgba(34,197,94,.1); border-color:rgba(34,197,94,.3); color:#86efac;}
+.tag-fix    {background:rgba(59,130,246,.1);border-color:rgba(59,130,246,.3);color:#93c5fd;}
+.tag-improve{background:rgba(245,196,0,.1); border-color:rgba(245,196,0,.3); color:var(--gold);}
+
+/* PAGES GRID */
+.pages-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;}
+.page-card{background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:14px 16px;text-align:center;text-decoration:none;transition:all .18s;display:block;}
+.page-card:hover{border-color:var(--gold);background:rgba(245,196,0,.04);transform:translateY(-2px);}
+.page-card-icon{font-size:1.5rem;margin-bottom:8px;display:block;}
+.page-card-name{font-size:.84rem;font-weight:800;color:var(--snow);margin-bottom:3px;}
+.page-card-desc{font-size:.68rem;color:var(--mist);}
+
+/* DIVIDER */
+.divider{height:1px;background:linear-gradient(90deg,transparent,var(--bd),transparent);margin:40px 0;}
+
+/* ROADMAP */
+.roadmap{display:flex;flex-direction:column;gap:10px;}
+.road-item{display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--s1);border:1px solid var(--bd);border-radius:9px;}
+.road-icon{font-size:1rem;flex-shrink:0;}
+.road-text{font-size:.84rem;color:var(--mist);}
+.road-text b{color:var(--snow);}
+.road-soon{margin-left:auto;font-size:.62rem;font-weight:700;background:rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.25);color:#d8b4fe;padding:2px 8px;border-radius:10px;white-space:nowrap;}
+.road-done{margin-left:auto;font-size:.62rem;font-weight:700;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);color:#86efac;padding:2px 8px;border-radius:10px;white-space:nowrap;}
+
+/* CREDITS */
+.credits{background:var(--s1);border:1px solid var(--bd);border-radius:14px;padding:24px;text-align:center;}
+.credits-title{font-size:1.05rem;font-weight:800;margin-bottom:8px;}
+.credits-sub{font-size:.82rem;color:var(--mist);line-height:1.6;}
+.credits-stack{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:14px;}
+.stack-badge{font-size:.72rem;font-weight:600;background:var(--s2);border:1px solid var(--bd2);padding:4px 12px;border-radius:20px;color:var(--mist);}
+
+/* COLOR LEGEND */
+.color-legend{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin-bottom:16px;}
+.color-item{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:9px;border:1px solid;}
+.color-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0;}
+.color-label{font-size:.82rem;font-weight:600;}
+.color-sub{font-size:.7rem;color:var(--mist);margin-top:1px;}
+
+@media(max-width:600px){
+  .hero-title{font-size:1.8rem;}
+  .features{grid-template-columns:1fr;}
+  .pages-grid{grid-template-columns:repeat(2,1fr);}
+  .ver-btn{padding:10px 14px;font-size:.78rem;}
+}
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <a href="index.html" class="home-link">⚡ Accueil</a>
+  <div class="hdr-sep"></div>
+  <div class="hdr-logo"><div class="bolt"></div>My Collection <em>TCG</em></div>
+</header>
+
+<!-- VERSION TABS -->
+<nav class="ver-nav">
+  <button class="ver-btn on" onclick="showVer('v11')">
+    📋 Version 1.1 <span class="ver-badge current">Actuelle</span>
+  </button>
+  <button class="ver-btn" onclick="showVer('v10')">
+    📋 Version 1.0 <span class="ver-badge old">Initiale</span>
+  </button>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!-- V1.1 -->
+<!-- ═══════════════════════════════════════════════════ -->
+<div class="ver-view on" id="ver-v11">
+
+<div class="hero">
+  <div class="hero-eyebrow">📋 Patch Notes</div>
+  <h1 class="hero-title">My Collection <em>TCG</em></h1>
+  <p class="hero-sub">Nouvelles fonctionnalités, améliorations et corrections de la version 1.1 — suivi d'ouverture, couleurs de fond, champs enrichis et alignements corrigés.</p>
+  <div class="hero-date">
+    <span class="version-badge">⚡ Version 1.1</span>
+    <span>·</span>
+    <span>Été 2025</span>
+    <span>·</span>
+    <span>Mise à jour majeure</span>
+  </div>
+</div>
+
+<div class="page">
+
+  <!-- NOUVEAU : SUIVI OUVERTURE -->
+  <div class="section">
+    <div class="section-eyebrow">🆕 Nouvelle fonctionnalité</div>
+    <h2 class="section-title">📦 Suivi d'ouverture dans Mes Classeurs</h2>
+    <p class="section-sub">Un nouvel onglet "Ouvertures" dans Mes Classeurs pour suivre tes displays, ETB, coffrets et autres produits — ouverts ou en attente d'ouverture.</p>
+    <div class="features">
+      <div class="feat">
+        <span class="feat-icon">📦</span>
+        <div class="feat-title">Toggle dans Mes Items</div>
+        <div class="feat-desc">Nouveau bouton orange "Inclure dans le suivi d'ouverture" dans le formulaire d'ajout — en plus du toggle financier bleu existant.</div>
+      </div>
+      <div class="feat">
+        <span class="feat-icon">⏳</span>
+        <div class="feat-title">Statuts En attente / Ouvert</div>
+        <div class="feat-desc">Chaque item lié affiche son état (⏳ En attente / ✅ Ouvert) avec l'image, le prix d'achat total et les notes.</div>
+      </div>
+      <div class="feat">
+        <span class="feat-icon">🔄</span>
+        <div class="feat-title">Sync bidirectionnelle</div>
+        <div class="feat-desc">"Marquer ouvert" met à jour l'état dans Mes Items (localStorage + Firestore) et enregistre la date d'ouverture automatiquement.</div>
+      </div>
+      <div class="feat">
+        <span class="feat-icon">↗</span>
+        <div class="feat-title">Redirection directe</div>
+        <div class="feat-desc">Bouton ↗ sur chaque item de l'onglet Ouvertures pour accéder directement au détail dans Mes Items.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- COULEURS DE FOND -->
+  <div class="section">
+    <div class="section-eyebrow">🆕 Design</div>
+    <h2 class="section-title">🎨 Couleurs de fond dans Mes Items</h2>
+    <p class="section-sub">Les items se distinguent visuellement selon leur statut de liaison et leur état de vente.</p>
+    <div class="color-legend">
+      <div class="color-item" style="background:rgba(59,130,246,.1);border-color:rgba(59,130,246,.3)">
+        <div class="color-dot" style="background:var(--blue)"></div>
+        <div><div class="color-label">💼 Investissement</div><div class="color-sub">Lié à Mes Investissements</div></div>
+      </div>
+      <div class="color-item" style="background:rgba(249,115,22,.09);border-color:rgba(249,115,22,.3)">
+        <div class="color-dot" style="background:var(--orange)"></div>
+        <div><div class="color-label">📦 Ouverture</div><div class="color-sub">Lié au suivi d'ouverture</div></div>
+      </div>
+      <div class="color-item" style="background:rgba(168,85,247,.1);border-color:rgba(168,85,247,.3)">
+        <div class="color-dot" style="background:var(--purple)"></div>
+        <div><div class="color-label">💼📦 Les deux</div><div class="color-sub">Lié aux deux suivis</div></div>
+      </div>
+      <div class="color-item" style="background:rgba(34,197,94,.07);border-color:rgba(34,197,94,.3);opacity:.75">
+        <div class="color-dot" style="background:var(--green)"></div>
+        <div><div class="color-label">💸 Vendu</div><div class="color-sub">Statut "Vendu" — atténué</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- AMÉLIORATIONS ITEMS -->
+  <div class="section">
+    <div class="section-eyebrow">🔧 Améliorations — Mes Items</div>
+    <h2 class="section-title">Nouveaux champs & options</h2>
+    <div class="feat-list">
+      <div class="feat-item">
+        <span class="feat-item-icon">🌐</span>
+        <div class="feat-item-body">
+          <span class="tag tag-new">Nouveau</span>
+          <div class="feat-item-title">Champ Langue séparé</div>
+          <div class="feat-item-desc">🇫🇷 Français / 🇯🇵 Japonais / 🇬🇧 Anglais / 🇰🇷 Coréen / 🇨🇳 Chinois — indépendant du champ Jeu.</div>
+        </div>
+      </div>
+      <div class="feat-item">
+        <span class="feat-item-icon">📦</span>
+        <div class="feat-item-body">
+          <span class="tag tag-new">Nouveau</span>
+          <div class="feat-item-title">Statut de vente</div>
+          <div class="feat-item-desc">📦 En stock / 💸 Vendu / 🔒 Réservé — transmis vers Mes Investissements et affiché dans le tableau.</div>
+        </div>
+      </div>
+      <div class="feat-item">
+        <span class="feat-item-icon">🎀</span>
+        <div class="feat-item-body">
+          <span class="tag tag-new">Nouveau</span>
+          <div class="feat-item-title">Type "Coffret" ajouté</div>
+          <div class="feat-item-desc">Disponible dans le select Type, le filtre sidebar et les compteurs.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- CORRECTIONS INVESTISSEMENTS -->
+  <div class="section">
+    <div class="section-eyebrow">🔧 Corrections — Mes Investissements</div>
+    <h2 class="section-title">Alignement et données des lignes Item</h2>
+    <div class="feat-list">
+      <div class="feat-item">
+        <span class="feat-item-icon">📐</span>
+        <div class="feat-item-body">
+          <span class="tag tag-fix">Correction</span>
+          <div class="feat-item-title">Badges colorés alignés</div>
+          <div class="feat-item-desc">Les lignes importées depuis Mes Items utilisent maintenant les mêmes badges colorés Format et Langue que les lignes manuelles — colonnes parfaitement alignées.</div>
+        </div>
+      </div>
+      <div class="feat-item">
+        <span class="feat-item-icon">🌐</span>
+        <div class="feat-item-body">
+          <span class="tag tag-fix">Correction</span>
+          <div class="feat-item-title">Langue réelle affichée</div>
+          <div class="feat-item-desc">La colonne Langue affichait le jeu (ex: "Pokémon") au lieu de la langue réelle (ex: "Japonais"). Corrigé — affiche désormais la vraie langue de l'item.</div>
+        </div>
+      </div>
+      <div class="feat-item">
+        <span class="feat-item-icon">💰</span>
+        <div class="feat-item-body">
+          <span class="tag tag-fix">Correction</span>
+          <div class="feat-item-title">Double multiplication du prix corrigée</div>
+          <div class="feat-item-desc">Le prix d'achat total était multiplié deux fois par la quantité. Corrigé — le calcul est maintenant prix unitaire × quantité.</div>
+        </div>
+      </div>
+      <div class="feat-item">
+        <span class="feat-item-icon">📊</span>
+        <div class="feat-item-body">
+          <span class="tag tag-improve">Amélioration</span>
+          <div class="feat-item-title">Statut transmis depuis Mes Items</div>
+          <div class="feat-item-desc">Le statut (En stock / Vendu / Réservé) de chaque item est maintenant visible dans la colonne Statut de Mes Investissements.</div>
+        </div>
+      </div>
+      <div class="feat-item">
+        <span class="feat-item-icon">📋</span>
+        <div class="feat-item-body">
+          <span class="tag tag-improve">Amélioration</span>
+          <div class="feat-item-title">Formats étendus dans le tableau</div>
+          <div class="feat-item-desc">Les options de format du tableau manuel incluent maintenant ETB, UPC, Tin, Booster en plus de Carte/Coffret/Blister/Display.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- CORRECTIONS TECHNIQUES -->
+  <div class="section">
+    <div class="section-eyebrow">🔧 Corrections techniques</div>
+    <h2 class="section-title">Stabilité et synchronisation</h2>
+    <div class="feat-list">
+      <div class="feat-item">
+        <span class="feat-item-icon">☁️</span>
+        <div class="feat-item-body">
+          <span class="tag tag-fix">Correction critique</span>
+          <div class="feat-item-title">Sauvegarde Firestore dans Mes Items</div>
+          <div class="feat-item-desc">La sauvegarde échouait systématiquement ("Erreur sync"). Cause : fonctions Firebase exposées séparément avec timing instable. Migration vers le pattern objet groupé <code>window._fbFns</code> identique à Mes Investissements.</div>
+        </div>
+      </div>
+      <div class="feat-item">
+        <span class="feat-item-icon">🔀</span>
+        <div class="feat-item-body">
+          <span class="tag tag-fix">Correction</span>
+          <div class="feat-item-title">Fusion intelligente Firestore + localStorage</div>
+          <div class="feat-item-desc">Remplacement de "Firestore wins" par une fusion par date de modification. Les items ajoutés offline ne sont plus écrasés au rechargement.</div>
+        </div>
+      </div>
+      <div class="feat-item">
+        <span class="feat-item-icon">🔥</span>
+        <div class="feat-item-body">
+          <span class="tag tag-fix">Correction</span>
+          <div class="feat-item-title">Règles Firestore — nouvelles collections</div>
+          <div class="feat-item-desc">Les collections <code>items_v1</code> et <code>wishlist_v1</code> nécessitent des règles Firestore à publier dans la console Firebase pour autoriser la lecture/écriture.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ROADMAP -->
+  <div class="section">
+    <div class="section-eyebrow">🗺️ Roadmap</div>
+    <h2 class="section-title">Ce qui arrive en V1.2+</h2>
+    <div class="roadmap">
+      <div class="road-item"><span class="road-icon">🔄</span><span class="road-text"><b>Page Échanges</b> — Gestion des trades avec d'autres collectionneurs</span><span class="road-soon">V1.2</span></div>
+      <div class="road-item"><span class="road-icon">🔗</span><span class="road-text"><b>Partage de collection</b> — Lien public en lecture seule</span><span class="road-soon">V1.2</span></div>
+      <div class="road-item"><span class="road-icon">📊</span><span class="road-text"><b>Graphique d'évolution</b> — Courbe de valeur du portefeuille</span><span class="road-soon">V1.2</span></div>
+      <div class="road-item"><span class="road-icon">🌙</span><span class="road-text"><b>Mode clair</b> — Toggle sombre/clair dans le header</span><span class="road-soon">V1.2</span></div>
+      <div class="road-item"><span class="road-icon">👥</span><span class="road-text"><b>Système d'amis</b> — Voir et comparer les collections</span><span class="road-soon">V2.0</span></div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+  <div class="credits">
+    <div class="credits-title">⚡ My Collection TCG — Version 1.1</div>
+    <div class="credits-sub">Hébergé sur GitHub Pages · Données privées stockées dans Firebase · Aucune publicité.</div>
+    <div class="credits-stack">
+      <span class="stack-badge">HTML / CSS / JS</span>
+      <span class="stack-badge">Firebase Auth</span>
+      <span class="stack-badge">Firestore</span>
+      <span class="stack-badge">TCGdex API</span>
+      <span class="stack-badge">optcgapi.com</span>
+      <span class="stack-badge">GitHub Pages</span>
+      <span class="stack-badge">Web Push API</span>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!-- V1.0 -->
+<!-- ═══════════════════════════════════════════════════ -->
+<div class="ver-view" id="ver-v10">
+
+<div class="hero">
+  <div class="hero-eyebrow">📋 Patch Notes</div>
+  <h1 class="hero-title">My Collection <em>TCG</em></h1>
+  <p class="hero-sub">La plateforme complète pour gérer ta collection de cartes à jouer — release initiale.</p>
+  <div class="hero-date">
+    <span class="version-badge">⚡ Version 1.0</span>
+    <span>·</span>
+    <span>Août 2025</span>
+    <span>·</span>
+    <span>Release initiale</span>
+  </div>
+</div>
+
+<div class="page">
+
+  <div class="section">
+    <div class="section-eyebrow">📦 Ce qui était inclus</div>
+    <h2 class="section-title">6 sections disponibles</h2>
+    <div class="pages-grid">
+      <a href="collection.html" class="page-card"><span class="page-card-icon">💹</span><div class="page-card-name">Mes Investissements</div><div class="page-card-desc">Suivi financier complet</div></a>
+      <a href="binder.html" class="page-card"><span class="page-card-icon">📘</span><div class="page-card-name">Mes Classeurs</div><div class="page-card-desc">Classeurs Pokémon JP</div></a>
+      <a href="binder-op.html" class="page-card"><span class="page-card-icon">🏴‍☠️</span><div class="page-card-name">Yonko Binder</div><div class="page-card-desc">Classeurs One Piece TCG</div></a>
+      <a href="items.html" class="page-card"><span class="page-card-icon">📦</span><div class="page-card-name">Mes Items</div><div class="page-card-desc">Inventaire physique</div></a>
+      <a href="wishlist.html" class="page-card"><span class="page-card-icon">🎯</span><div class="page-card-name">Wishlist</div><div class="page-card-desc">À acquérir</div></a>
+      <div class="page-card" style="opacity:.4;cursor:default;"><span class="page-card-icon">🔄</span><div class="page-card-name">Échanges</div><div class="page-card-desc">Bientôt disponible</div></div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="section">
+    <div class="section-eyebrow">⭐ Fonctionnalités V1.0</div>
+    <h2 class="section-title">Ce qui a été livré</h2>
+    <div class="feat-list">
+      <div class="feat-item"><span class="feat-item-icon">📦</span><div class="feat-item-body"><div class="feat-item-title">Mes Items — Inventaire complet</div><div class="feat-item-desc">Scan code-barres, alertes prix, Web Push, historique des prix, duplication, tri, sync cloud intelligente, raccourcis clavier.</div></div></div>
+      <div class="feat-item"><span class="feat-item-icon">🎯</span><div class="feat-item-body"><div class="feat-item-title">Wishlist — Page complète</div><div class="feat-item-desc">Priorités haute/moyenne/basse, budget max vs prix actuel, bouton Acquérir avec transfert automatique vers Mes Items.</div></div></div>
+      <div class="feat-item"><span class="feat-item-icon">💹</span><div class="feat-item-body"><div class="feat-item-title">Mes Investissements — Tri & Export</div><div class="feat-item-desc">Tri par colonnes, colonne % rentabilité, export CSV compatible Excel FR, pont avec Mes Items, lien Cardmarket URL direct.</div></div></div>
+      <div class="feat-item"><span class="feat-item-icon">📘</span><div class="feat-item-body"><div class="feat-item-title">Mes Classeurs — Améliorations</div><div class="feat-item-desc">Drag & drop pour réordonner les sets, date d'acquisition, valeur estimée depuis Mes Items, double couleur de classeur.</div></div></div>
+      <div class="feat-item"><span class="feat-item-icon">🏠</span><div class="feat-item-body"><div class="feat-item-title">Accueil — Dashboard sidebar</div><div class="feat-item-desc">9 stats live : valeur investie, valeur marché, items, classeurs, full/master sets, alertes, wishlist.</div></div></div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="section">
+    <div class="section-eyebrow">🗺️ Roadmap V1.0</div>
+    <h2 class="section-title">Ce qui était prévu</h2>
+    <div class="roadmap">
+      <div class="road-item"><span class="road-icon">📦</span><span class="road-text"><b>Suivi d'ouverture</b> — Onglet Ouvertures dans Mes Classeurs</span><span class="road-done">✅ Livré en V1.1</span></div>
+      <div class="road-item"><span class="road-icon">🌐</span><span class="road-text"><b>Langue + Statut dans Mes Items</b> — Champs séparés</span><span class="road-done">✅ Livré en V1.1</span></div>
+      <div class="road-item"><span class="road-icon">🔄</span><span class="road-text"><b>Page Échanges</b></span><span class="road-soon">V1.2</span></div>
+      <div class="road-item"><span class="road-icon">📊</span><span class="road-text"><b>Graphique d'évolution</b></span><span class="road-soon">V1.2</span></div>
+      <div class="road-item"><span class="road-icon">👥</span><span class="road-text"><b>Système d'amis</b></span><span class="road-soon">V2.0</span></div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+  <div class="credits">
+    <div class="credits-title">⚡ My Collection TCG — Version 1.0</div>
+    <div class="credits-sub">Hébergé sur GitHub Pages · Données privées stockées dans Firebase · Aucune publicité.</div>
+    <div class="credits-stack">
+      <span class="stack-badge">HTML / CSS / JS</span>
+      <span class="stack-badge">Firebase Auth</span>
+      <span class="stack-badge">Firestore</span>
+      <span class="stack-badge">TCGdex API</span>
+      <span class="stack-badge">optcgapi.com</span>
+      <span class="stack-badge">GitHub Pages</span>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<script>
+function showVer(v) {
+  document.querySelectorAll('.ver-view').forEach(el => el.classList.remove('on'));
+  document.querySelectorAll('.ver-btn').forEach(b => b.classList.remove('on'));
+  document.getElementById('ver-' + v).classList.add('on');
+  event.currentTarget.classList.add('on');
+}
+</script>
+</body>
+</html>
