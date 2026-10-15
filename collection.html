@@ -7,21 +7,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mes Investissements — My Collection TCG</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="commun.js"></script>
 <script type="module">
 import { initializeApp }                                       from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut }               from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc }                  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-const firebaseConfig = {
-  apiKey:            "AIzaSyCgCTF7sndU-q-eFvwiTKz_8C0a3JfZ0H4",
-  authDomain:        "ma-collection-69003.firebaseapp.com",
-  projectId:         "ma-collection-69003",
-  storageBucket:     "ma-collection-69003.firebasestorage.app",
-  messagingSenderId: "902502189555",
-  appId:             "1:902502189555:web:db73883fe242306da96a86"
-};
-
-const app  = initializeApp(firebaseConfig);
+const app  = initializeApp(window.TCG_FIREBASE_CONFIG);
 const auth = getAuth(app);
 const db   = getFirestore(app);
 
@@ -282,12 +274,12 @@ td select.statut-select:hover { border-color: #4f6ef7; }
         </div>
         <div class="filter-group"><label>Langue</label>
           <select id="filter-langue" onchange="afficherTableau()">
-            <option value="">Toutes</option><option value="Francais">Français</option><option value="Anglais">Anglais</option><option value="Chinois">Chinois</option><option value="Japonais">Japonais</option><option value="Coree">Corée</option>
+            <option value="">Toutes</option><option value="Francais">Français</option><option value="Anglais">Anglais</option><option value="Chinois">Chinois</option><option value="Japonais">Japonais</option><option value="Coree">Corée</option><option value="Autre">Autre</option>
           </select>
         </div>
         <div class="filter-group"><label>Statut</label>
           <select id="filter-statut-tab" onchange="afficherTableau()">
-            <option value="">Tous</option><option value="stock">En stock</option><option value="vente">En vente</option><option value="vendu">Vendu</option>
+            <option value="">Tous</option><option value="stock">En stock</option><option value="vente">En vente</option><option value="vendu">Vendu</option><option value="reserve">Réservé</option>
           </select>
         </div>
         <div class="filter-group"><label>Tri par prix</label>
@@ -405,11 +397,13 @@ var nextId      = 1;
 var currentUser = null;   // uid Firebase
 var chartStatut=null, chartComp=null, chartFormat=null, chartLangue=null, chartBenef=null, chartPrix=null;
 var _saveTimer  = null;
+var _loaded     = false;
 var _sortCol = null;
 var _sortDir = 1; // 1=asc, -1=desc
 
 function logout() {
   donnees = []; nextId = 1; currentUser = null;
+  clearLocalCaches();
   window._fbFns.signOut(window._fbAuth).then(function() {
     window.location.href = 'index.html';
   });
@@ -440,18 +434,30 @@ async function charger() {
     } else {
       donnees = []; nextId = 1;
     }
-  } catch(e) { console.warn('collections load:', e); donnees = []; nextId = 1; }
+    // Anciennes lignes créées par la fenêtre d'ajout avec la mauvaise valeur
+    donnees.forEach(function(l){ if (l.langue === 'Coreen') l.langue = 'Coree'; });
+    _loaded = true;
+  } catch(e) {
+    console.warn('collections load:', e);
+    donnees = []; nextId = 1;
+    alert('⚠️ Impossible de charger ta collection. Recharge la page : rien ne sera enregistré tant que le chargement n\'a pas réussi.');
+  }
 
 }
 
 function sauvegarder() {
+  // Sans chargement réussi, on écraserait la vraie collection par une liste vide.
+  if (!_loaded) return;
   // Debounce : attend 800ms d'inactivité avant d'écrire
   clearTimeout(_saveTimer);
   _saveTimer = setTimeout(function() {
     if (!currentUser) return;
     var fns = window._fbFns;
     var ref = fns.doc(window._fbDb, 'collections', currentUser);
-    fns.setDoc(ref, { donnees: donnees, nextId: nextId });
+    fns.setDoc(ref, { donnees: donnees, nextId: nextId }).catch(function(e) {
+      console.warn('collections save:', e);
+      alert('⚠️ Sauvegarde impossible (connexion ?). Ta dernière modification n\'est pas enregistrée dans le cloud.');
+    });
   }, 800);
 }
 
@@ -648,7 +654,7 @@ function afficherTableau() {
       '<td style="padding:6px 10px"><select class="' + langueClass(ligne.langue) + '"' +
           ' onchange="donnees.find(function(l){return l.id===' + ligne.id + '}).langue=this.value;sauvegarder();afficherTableau()">' +
           '<option value="">-</option>' +
-          opt('Francais','Français',ligne.langue) + opt('Anglais','Anglais',ligne.langue) + opt('Chinois','Chinois',ligne.langue) + opt('Japonais','Japonais',ligne.langue) + opt('Coree','Corée',ligne.langue) +
+          opt('Francais','Français',ligne.langue) + opt('Anglais','Anglais',ligne.langue) + opt('Chinois','Chinois',ligne.langue) + opt('Japonais','Japonais',ligne.langue) + opt('Coree','Corée',ligne.langue) + opt('Autre','Autre',ligne.langue) +
           '</select></td>' +
 
       '<td><input type="number" step="0.01" value="' + (ligne.achat||'') + '"' +
@@ -670,7 +676,7 @@ function afficherTableau() {
 
       '<td><select class="statut-select"' +
           ' onchange="donnees.find(function(l){return l.id===' + ligne.id + '}).statut=this.value;sauvegarder()">' +
-          opt('stock','En stock',ligne.statut) + opt('vente','En vente',ligne.statut) + opt('vendu','Vendu',ligne.statut) +
+          opt('stock','En stock',ligne.statut) + opt('vente','En vente',ligne.statut) + opt('vendu','Vendu',ligne.statut) + opt('reserve','Réservé',ligne.statut) +
           '</select></td>';
     tbody.appendChild(tr);
   });
@@ -849,6 +855,8 @@ function importer(event) {
   reader.onload = function(e) {
     try {
       var data = JSON.parse(e.target.result);
+      var nb = (data.donnees || []).length;
+      if (!confirm('Remplacer toute ta collection (' + donnees.length + ' lignes) par les ' + nb + ' lignes du fichier ?')) { event.target.value = ''; return; }
       donnees = data.donnees || [];
       nextId  = data.nextId  || 1;
       sauvegarder();
@@ -948,8 +956,9 @@ function deleteInvestModal() {
 }
 
 // Fermer sur backdrop
-document.getElementById('modalInvest').addEventListener('click', function(e) {
-  if (e.target === this) closeInvestModal();
+// (la fenêtre est déclarée plus bas dans la page, d'où l'écoute sur document)
+document.addEventListener('click', function(e) {
+  if (e.target.id === 'modalInvest') closeInvestModal();
 });
 
 // onAuthStateChanged handles init (see module script above)
@@ -988,7 +997,7 @@ document.getElementById('modalInvest').addEventListener('click', function(e) {
           <option value="Japonais">🇯🇵 Japonais</option>
           <option value="Francais">🇫🇷 Français</option>
           <option value="Anglais">🇬🇧 Anglais</option>
-          <option value="Coreen">🇰🇷 Coréen</option>
+          <option value="Coree">🇰🇷 Coréen</option>
           <option value="Chinois">🇨🇳 Chinois</option>
           <option value="Autre">🌐 Autre</option>
         </select>
@@ -1019,6 +1028,7 @@ document.getElementById('modalInvest').addEventListener('click', function(e) {
         <label style="font-size:.74rem;font-weight:700;color:#7a96aa;text-transform:uppercase;letter-spacing:.06em">Statut</label>
         <select id="iStatut" style="background:#111f2e;border:1px solid #223344;color:#dce8f2;padding:11px 14px;border-radius:9px;font-size:.92rem;outline:none;width:100%;font-family:inherit">
           <option value="stock">📦 En stock</option>
+          <option value="vente">🏷️ En vente</option>
           <option value="vendu">💸 Vendu</option>
           <option value="reserve">🔒 Réservé</option>
         </select>

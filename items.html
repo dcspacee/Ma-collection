@@ -7,12 +7,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Mes Items — My Collection TCG</title>
 
+<script src="commun.js"></script>
 <script type="module">
 import { initializeApp }                        from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc }   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-const cfg={apiKey:"AIzaSyCgCTF7sndU-q-eFvwiTKz_8C0a3JfZ0H4",authDomain:"ma-collection-69003.firebaseapp.com",projectId:"ma-collection-69003",storageBucket:"ma-collection-69003.firebasestorage.app",messagingSenderId:"902502189555",appId:"1:902502189555:web:db73883fe242306da96a86"};
-const app=initializeApp(cfg),auth=getAuth(app),db=getFirestore(app);
+const app=initializeApp(window.TCG_FIREBASE_CONFIG),auth=getAuth(app),db=getFirestore(app);
 // Même pattern que collection.html — objet groupé plus robuste
 window._fbFns = { signOut, doc, setDoc, getDoc };
 window._fbDb  = db;
@@ -21,64 +21,10 @@ onAuthStateChanged(auth,async user=>{
   if(!user){window.location.href='index.html';return;}
   window._uid=user.uid;window._email=user.email||user.displayName||'';
   document.getElementById('hdrEmail').textContent=window._uid?window._email:'';
+  if(localStorage.getItem('tcg_owner')!==user.uid) S.items=[]; // copie locale d'un autre compte
+  claimLocalCaches(user.uid);
   try{
-    const snap=await getDoc(doc(db,'items_v1',user.uid));
-    if(snap.exists()){
-      const d=snap.data();
-      const fsItems=d.items||[];
-      const lsItems=S.items||[];
-
-      // Stratégie de fusion : on garde la version la plus récente pour chaque item.
-      // Si Firestore a des items que localStorage n'a pas (ajoutés sur un autre appareil)
-      // → on les ajoute. Si localStorage a des items plus récents → on les garde.
-      if(fsItems.length===0 && lsItems.length>0){
-        // Firestore vide mais localStorage a des données → garder localStorage
-        console.log('[items] Firestore vide, localStorage conservé :',lsItems.length,'items');
-      } else if(lsItems.length===0){
-        // localStorage vide → prendre Firestore
-        S.items=fsItems;
-        console.log('[items] Firestore chargé :',fsItems.length,'items');
-      } else {
-        // Les deux ont des données → fusionner par ID + date de mise à jour
-        const merged=new Map();
-        // D'abord Firestore
-        fsItems.forEach(it=>merged.set(it.id,it));
-        // Ensuite localStorage — écrase si plus récent (updatedAt ou createdAt)
-        lsItems.forEach(it=>{
-          const existing=merged.get(it.id);
-          if(!existing){
-            merged.set(it.id,it); // item local non présent dans Firestore → ajouter
-          } else {
-            const fsTime=(existing.updatedAt||existing.createdAt||0);
-            const lsTime=(it.updatedAt||it.createdAt||0);
-            if(lsTime>fsTime) merged.set(it.id,it); // local plus récent → garder
-          }
-        });
-        S.items=Array.from(merged.values()).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
-        console.log('[items] Fusion Firestore+localStorage :',S.items.length,'items');
-      }
-
-      // Met à jour localStorage avec les données fusionnées
-      try{localStorage.setItem('items_v1_cache',JSON.stringify(S));}catch(e){}
-
-      // Si on a des données locales plus récentes, les repousser vers Firestore
-      if(S.items.length > fsItems.length || S.items.some((it,i)=>{
-        const fs=fsItems.find(f=>f.id===it.id);
-        return !fs || (it.updatedAt||0)>(fs.updatedAt||0);
-      })){
-        try{
-          await setDoc(doc(db,'items_v1',user.uid),{items:S.items}); // raw module vars OK here
-          console.log('[items] Firestore mis à jour avec données locales plus récentes');
-        }catch(e){console.warn('[items] Sync vers Firestore échouée:',e);}
-      }
-
-    } else {
-      // Pas de doc Firestore du tout — uploader ce qu'on a en local
-      console.log('[items] Pas de doc Firestore — upload local :',S.items.length,'items');
-      if(S.items.length>0){
-        try{await setDoc(doc(db,'items_v1',user.uid),{items:S.items});}catch(e){}
-      }
-    }
+    await loadItems();
   }catch(e){
     console.warn('[items] Erreur Firestore load:',e);
     console.log('[items] Fallback localStorage :',S.items.length,'items');
@@ -621,7 +567,7 @@ window._ready = () => {
   if(tid){ sessionStorage.removeItem('openItemId'); setTimeout(()=>openDetail(tid),150); }
 };
 
-function logout(){ window._fbFns.signOut(window._fbAuth).then(()=>{window.location.href='index.html';}); }
+function logout(){ clearLocalCaches(); window._fbFns.signOut(window._fbAuth).then(()=>{window.location.href='index.html';}); }
 
 // ══════════════════════════════════════════════════
 // SYNC
@@ -640,46 +586,30 @@ async function forceSync(){
   }
   setSyncStatus('Synchronisation…','var(--gold)');
   try {
-    const fns  = window._fbFns;
-    const ref  = fns.doc(window._fbDb, 'items_v1', window._uid);
-    const snap = await fns.getDoc(ref);
-    if(snap.exists()){
-      const d = snap.data();
-      const fsItems = d.items || [];
-      // Fusion avec localStorage comme au chargement
-      const lsItems = S.items || [];
-      if(fsItems.length >= lsItems.length){
-        S.items = fsItems;
-      } else {
-        // Local a plus d'items — fusionner
-        const merged = new Map();
-        fsItems.forEach(it => merged.set(it.id, it));
-        lsItems.forEach(it => {
-          const ex = merged.get(it.id);
-          if(!ex || (it.updatedAt||0) > (ex.updatedAt||0)) merged.set(it.id, it);
-        });
-        S.items = Array.from(merged.values()).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
-      }
-      try{localStorage.setItem('items_v1_cache', JSON.stringify(S));}catch(e){}
-      render(); updateStats(); updateCounts(); checkAllAlerts();
-      setSyncStatus(`${S.items.length} items · cloud`, 'var(--green)');
-      showToast(`${S.items.length} items synchronisés ✔`, 'ok');
-    } else {
-      // Aucun doc dans Firestore — uploader le local
-      if(S.items.length > 0){
-        await fns.setDoc(fns.doc(window._fbDb,'items_v1',window._uid), {items: S.items});
-        setSyncStatus(`${S.items.length} items · cloud`, 'var(--green)');
-        showToast('Items locaux uploadés vers le cloud ✔', 'ok');
-      } else {
-        setSyncStatus('Aucune donnée', 'var(--fog)');
-        showToast('Aucune donnée dans le cloud ni en local', 'info');
-      }
-    }
+    await loadItems();
+    render(); updateStats(); updateCounts(); checkAllAlerts();
+    setSyncStatus(`${S.items.length} items · cloud`, 'var(--green)');
+    showToast(`${S.items.length} items synchronisés ✔`, 'ok');
   } catch(e) {
     setSyncStatus('Erreur sync', 'var(--red)');
     showToast('Erreur de synchronisation — voir console', 'err');
     console.error('[sync] Erreur détaillée:', e.code, e.message, e);
   }
+}
+
+// Le cloud fait foi (sinon un item supprimé sur un appareil revient depuis un autre).
+// Exception : ce navigateur a des modifications pas encore envoyées (drapeau « dirty ») → on les envoie.
+async function loadItems(){
+  const fns=window._fbFns, ref=fns.doc(window._fbDb,'items_v1',window._uid);
+  const snap=await fns.getDoc(ref);
+  const dirty=localStorage.getItem('items_v1_dirty');
+  if(dirty || (!snap.exists() && S.items.length)){
+    await fns.setDoc(ref,{items:S.items});
+    try{localStorage.removeItem('items_v1_dirty');}catch(e){}
+  } else if(snap.exists()){
+    S.items=snap.data().items||[];
+  }
+  try{localStorage.setItem(SK+'_cache',JSON.stringify(S));}catch(e){}
 }
 
 function setSyncOk(){
@@ -824,7 +754,7 @@ function renderList(el,items){
     <thead><tr>
       <th style="width:56px"></th>
       <th>Nom</th><th>État</th><th>Qté</th>
-      <th>Achat</th><th>Marché</th><th>Date</th><th>Inv.</th><th></th>
+      <th>Achat</th><th>Marché</th><th>Date</th><th></th>
     </tr></thead><tbody>${rows}</tbody></table>`;
 }
 
@@ -929,7 +859,7 @@ function checkAllAlerts(){
   if(!triggered.length) return;
   // Visual update already done in render() via isAlerted()
   // Try browser notification
-  if(Notification.permission==='granted'){
+  if('Notification' in window && Notification.permission==='granted'){
     triggered.forEach(it=>{
       // Only notify once per session
       const key='notif_sent_'+it.id;
@@ -988,7 +918,7 @@ function openModal(id){
   const prev=document.getElementById('imgPreview');
   if(it?.img){prev.src=it.img;prev.classList.add('show');}else prev.classList.remove('show');
   // Show notif banner if item has alert and permission not granted
-  if((it?.alertPrice||document.getElementById('iAlertPrice').value) && Notification.permission==='default'){
+  if((it?.alertPrice||document.getElementById('iAlertPrice').value) && 'Notification' in window && Notification.permission==='default'){
     document.getElementById('notifBanner').classList.remove('hidden');
   }
   document.getElementById('modalItem').classList.add('open');
@@ -1158,7 +1088,7 @@ function deleteFromDetail(){
 // FIREBASE SYNC
 // ══════════════════════════════════════════════════
 function save(){
-  try{localStorage.setItem(SK+'_cache',JSON.stringify(S));}catch(e){}
+  try{localStorage.setItem(SK+'_cache',JSON.stringify(S));localStorage.setItem('items_v1_dirty','1');}catch(e){}
   if(!window._uid || !window._fbFns) return;
   setSyncStatus('Sauvegarde…','var(--gold)');
   clearTimeout(window._saveT);
@@ -1166,10 +1096,12 @@ function save(){
     try{
       var fns = window._fbFns;
       await fns.setDoc(fns.doc(window._fbDb,'items_v1',window._uid),{items:S.items});
+      try{localStorage.removeItem('items_v1_dirty');}catch(e){}
       setSyncOk();
     }catch(e){
       console.warn('Firestore save:',e);
       setSyncStatus('Erreur sauvegarde','var(--red)');
+      showToast('Sauvegarde cloud impossible — données gardées sur cet appareil','err');
     }
   },900);
 }

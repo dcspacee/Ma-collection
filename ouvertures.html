@@ -7,20 +7,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Ouvertures — My Collection TCG</title>
 
+<script src="commun.js"></script>
 <script type="module">
 import { initializeApp }                        from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc }   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-const cfg = {
-  apiKey:"AIzaSyCgCTF7sndU-q-eFvwiTKz_8C0a3JfZ0H4",
-  authDomain:"ma-collection-69003.firebaseapp.com",
-  projectId:"ma-collection-69003",
-  storageBucket:"ma-collection-69003.firebasestorage.app",
-  messagingSenderId:"902502189555",
-  appId:"1:902502189555:web:db73883fe242306da96a86"
-};
-const app  = initializeApp(cfg);
+const app  = initializeApp(window.TCG_FIREBASE_CONFIG);
 const auth = getAuth(app);
 const db   = getFirestore(app);
 
@@ -36,6 +29,8 @@ onAuthStateChanged(auth, async user => {
   window._uid   = user.uid;
   window._email = user.email || user.displayName || '';
   document.getElementById('hdrEmail').textContent = window._email;
+  if (localStorage.getItem('tcg_owner') !== user.uid) S.ouvertures = []; // copie locale d'un autre compte
+  claimLocalCaches(user.uid);
   try {
     const snap = await getDoc(doc(db, 'binders_v2', user.uid));
     if (snap.exists()) {
@@ -43,7 +38,7 @@ onAuthStateChanged(auth, async user => {
       S.ouvertures = d.ouvertures || [];
       try { localStorage.setItem(SK+'_cache', JSON.stringify({ouvertures:S.ouvertures})); } catch(e) {}
     } else if ((S.ouvertures||[]).length > 0) {
-      await setDoc(doc(db,'binders_v2',user.uid), {ouvertures:S.ouvertures}).catch(()=>{});
+      await setDoc(doc(db,'binders_v2',user.uid), {ouvertures:S.ouvertures}, {merge:true}).catch(()=>{});
     }
   } catch(e) { console.warn('Firestore load:', e); }
   if (window._appReady) window._appReady();
@@ -415,6 +410,7 @@ var curFilter = 'all';
 var sortCol   = 'date';
 var sortDir   = -1; // -1 = desc
 var pendOpenId = null;
+var pendDropOnly = false; // true : on édite juste les drops, sans marquer « ouvert »
 
 // ══ BOOT ═════════════════════════════════════════════════
 window._appReady = function() {
@@ -629,19 +625,26 @@ function deleteById(id) {
 
 // ══ MARQUER OUVERT ═══════════════════════════════════════
 function markOpen(id) {
-  pendOpenId=id;
+  pendOpenId=id; pendDropOnly=false;
   var o=(S.ouvertures||[]).filter(function(x){ return x.id===id; })[0];
   document.getElementById('popDropText').value=o&&o.drop?o.drop:'';
   document.getElementById('modalOpen').classList.add('open');
 }
 function popSkip() {
   document.getElementById('modalOpen').classList.remove('open');
+  if (pendDropOnly) { pendOpenId=null; return; }
   confirmOpen(pendOpenId,'');
 }
 function popSave() {
   var note=document.getElementById('popDropText').value.trim();
   document.getElementById('modalOpen').classList.remove('open');
+  if (pendDropOnly) { saveDrop(pendOpenId,note); return; }
   confirmOpen(pendOpenId,note);
+}
+function saveDrop(id,drop) {
+  var o=(S.ouvertures||[]).filter(function(x){ return x.id===id; })[0];
+  if(o){ o.drop=drop||null; o.updatedAt=Date.now(); save(); renderAll(); showToast('Drops enregistrés ✔','ok'); }
+  pendOpenId=null;
 }
 function confirmOpen(id,drop) {
   for(var i=0;i<S.ouvertures.length;i++){
@@ -662,7 +665,7 @@ function confirmOpen(id,drop) {
 function openDropEdit(id) {
   var o=(S.ouvertures||[]).filter(function(x){ return x.id===id; })[0];
   if(!o) return;
-  pendOpenId=id;
+  pendOpenId=id; pendDropOnly=true;
   document.getElementById('popDropText').value=o.drop||'';
   document.getElementById('modalOpen').classList.add('open');
 }
@@ -681,11 +684,9 @@ async function flushSave() {
   if(_saveInFlight||!_savePending||!window._uid) return;
   var payload=_savePending; _savePending=null; _saveInFlight=true;
   try {
-    // Merge avec binders_v2 existant pour ne pas écraser les classeurs
-    var snap=await window._getDoc(window._doc(window._db,'binders_v2',window._uid));
-    var existing=snap.exists()?snap.data():{};
+    // merge : ne touche pas aux classeurs du même document
     await window._setDoc(window._doc(window._db,'binders_v2',window._uid),
-      Object.assign({},existing,{ouvertures:payload.ouvertures}));
+      {ouvertures:payload.ouvertures},{merge:true});
   } catch(e) {
     console.warn('Firestore save:',e);
     _savePending=payload;
@@ -699,7 +700,7 @@ document.addEventListener('visibilitychange',function(){ if(document.visibilityS
 window.addEventListener('pagehide',function(){ if(_savePending) flushSave(); });
 
 // ══ UTILS ════════════════════════════════════════════════
-function logout(){ if(window._signOut&&window._auth) window._signOut(window._auth).then(function(){ window.location.href='index.html'; }); }
+function logout(){ clearLocalCaches(); if(window._signOut&&window._auth) window._signOut(window._auth).then(function(){ window.location.href='index.html'; }); }
 var _toastT;
 function showToast(msg,type){
   var t=document.getElementById('toast'); if(!t) return;

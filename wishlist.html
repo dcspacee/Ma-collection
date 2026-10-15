@@ -7,17 +7,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Wishlist — My Collection TCG</title>
 
+<script src="commun.js"></script>
 <script type="module">
 import { initializeApp }                        from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc }   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-const cfg={apiKey:"AIzaSyCgCTF7sndU-q-eFvwiTKz_8C0a3JfZ0H4",authDomain:"ma-collection-69003.firebaseapp.com",projectId:"ma-collection-69003",storageBucket:"ma-collection-69003.firebasestorage.app",messagingSenderId:"902502189555",appId:"1:902502189555:web:db73883fe242306da96a86"};
-const app=initializeApp(cfg),auth=getAuth(app),db=getFirestore(app);
+const app=initializeApp(window.TCG_FIREBASE_CONFIG),auth=getAuth(app),db=getFirestore(app);
 window._auth=auth;window._db=db;window._signOut=signOut;window._doc=doc;window._setDoc=setDoc;window._getDoc=getDoc;
 onAuthStateChanged(auth,async user=>{
   if(!user){window.location.href='index.html';return;}
   window._uid=user.uid;window._email=user.email||user.displayName||'';
   document.getElementById('hdrEmail').textContent=window._email;
+  if(localStorage.getItem('tcg_owner')!==user.uid) S.items=[]; // copie locale d'un autre compte
+  claimLocalCaches(user.uid);
   try{const snap=await getDoc(doc(db,'wishlist_v1',user.uid));if(snap.exists()){const d=snap.data();S.items=d.items||[];}}catch(e){console.warn('load:',e);}
   if(window._ready)window._ready();
 });
@@ -343,7 +345,7 @@ const PRI_CHIP  ={high:'chip-pri-high',med:'chip-pri-med',low:'chip-pri-low'};
 const PRI_SORT  ={high:3,med:2,low:1};
 
 window._ready=()=>{render();updateStats();updateCounts();};
-function logout(){window._signOut(window._auth).then(()=>{window.location.href='index.html';});}
+function logout(){clearLocalCaches();window._signOut(window._auth).then(()=>{window.location.href='index.html';});}
 
 function setView(v){
   viewMode=v;
@@ -564,14 +566,11 @@ function acquireItem(){
   },400);
 }
 
-function transferToItems(it){
+// Écrit dans le cloud (Mes Items s'y fie) et dans la copie locale.
+async function transferToItems(it){
   try {
-    var raw=localStorage.getItem('items_v1_cache');
-    var cache=raw?JSON.parse(raw):{items:[]};
-    cache.items=cache.items||[];
-    // Map wishlist data to items format
     var TYPE_MAP={pokemon:'display',op:'display',lorcana:'display',magic:'display',autre:'autre'};
-    cache.items.unshift({
+    var newItem={
       id:Date.now().toString(),
       name:it.name,
       jeu:it.jeu||'autre',
@@ -587,7 +586,16 @@ function transferToItems(it){
       createdAt:Date.now(),
       updatedAt:Date.now(),
       priceHistory:[],
-    });
+    };
+    var ref=window._doc(window._db,'items_v1',window._uid);
+    var snap=await window._getDoc(ref);
+    var cloudItems=snap.exists()?(snap.data().items||[]):[];
+    cloudItems.unshift(newItem);
+    await window._setDoc(ref,{items:cloudItems});
+    var raw=localStorage.getItem('items_v1_cache');
+    var cache=raw?JSON.parse(raw):{items:[]};
+    cache.items=cache.items||[];
+    cache.items.unshift(newItem);
     localStorage.setItem('items_v1_cache',JSON.stringify(cache));
     showToast('Transféré dans Mes Items ✔','ok');
     setTimeout(function(){ if(confirm('Ouvrir Mes Items ?')) window.location.href='items.html'; },600);
@@ -641,7 +649,7 @@ function save(){
   clearTimeout(window._saveT);
   window._saveT=setTimeout(async()=>{
     try{await window._setDoc(window._doc(window._db,'wishlist_v1',window._uid),{items:S.items});}
-    catch(e){console.warn('Firestore save:',e);}
+    catch(e){console.warn('Firestore save:',e);showToast('Sauvegarde cloud impossible — données gardées sur cet appareil','err');}
   },900);
 }
 

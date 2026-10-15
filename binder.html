@@ -7,20 +7,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Ma Collection — My Collection TCG</title>
 
+<script src="commun.js"></script>
 <script type="module">
 import { initializeApp }                        from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc }   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-const cfg = {
-  apiKey:"AIzaSyCgCTF7sndU-q-eFvwiTKz_8C0a3JfZ0H4",
-  authDomain:"ma-collection-69003.firebaseapp.com",
-  projectId:"ma-collection-69003",
-  storageBucket:"ma-collection-69003.firebasestorage.app",
-  messagingSenderId:"902502189555",
-  appId:"1:902502189555:web:db73883fe242306da96a86"
-};
-const app  = initializeApp(cfg);
+const app  = initializeApp(window.TCG_FIREBASE_CONFIG);
 const auth = getAuth(app);
 const db   = getFirestore(app);
 
@@ -36,15 +29,15 @@ onAuthStateChanged(auth, async user => {
   window._uid   = user.uid;
   window._email = user.email || user.displayName || '';
   document.getElementById('hdrEmail').textContent = window._email;
+  if (localStorage.getItem('tcg_owner') !== user.uid) S.binders = []; // copie locale d'un autre compte
+  claimLocalCaches(user.uid);
   try {
     const snap = await getDoc(doc(db, 'binders_v2', user.uid));
     if (snap.exists()) {
-      const d = snap.data();
-      S.binders    = d.binders    || [];
-      S.ouvertures = d.ouvertures || [];
+      S.binders = snap.data().binders || [];
       try { localStorage.setItem(SK+'_cache', JSON.stringify(S)); } catch(e) {}
-    } else if ((S.binders||[]).length > 0 || (S.ouvertures||[]).length > 0) {
-      await setDoc(doc(db,'binders_v2',user.uid), { binders: S.binders||[], ouvertures: S.ouvertures||[] }).catch(()=>{});
+    } else if (S.binders.length > 0) {
+      await setDoc(doc(db,'binders_v2',user.uid), { binders: S.binders }, { merge: true }).catch(()=>{});
     }
   } catch(e) { console.warn('Firestore load:', e); }
   if (window._appReady) window._appReady();
@@ -204,28 +197,6 @@ select option{background:var(--s2);}
 .spinner{width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin .65s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg);}}
 
-/* OUVERTURES */
-.ouv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;}
-.ouv-card{background:var(--s1);border:1px solid var(--border);border-radius:14px;overflow:hidden;cursor:pointer;position:relative;transition:transform .18s,box-shadow .18s;}
-.ouv-card:hover{transform:translateY(-3px);box-shadow:0 14px 36px rgba(0,0,0,.5);}
-.ouv-card.status-ouvert{border-color:rgba(34,197,94,.4);}
-.ouv-card.status-attente{border-color:rgba(245,196,0,.25);}
-.ouv-img{width:100%;height:150px;object-fit:cover;display:block;background:var(--s2);}
-.ouv-img-ph{width:100%;height:150px;background:linear-gradient(135deg,var(--s2),var(--s3));display:flex;align-items:center;justify-content:center;font-size:3rem;}
-.ouv-body{padding:12px 14px 14px;}
-.ouv-name{font-size:.92rem;font-weight:800;margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.ouv-chips{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;}
-.chip{font-size:.65rem;font-weight:700;padding:2px 8px;border-radius:20px;border:1px solid;white-space:nowrap;}
-.ouv-status{display:inline-flex;align-items:center;gap:5px;font-size:.7rem;font-weight:700;padding:3px 10px;border-radius:20px;border:1px solid;}
-.ouv-status.ouvert{background:rgba(34,197,94,.1);border-color:rgba(34,197,94,.35);color:#86efac;}
-.ouv-status.attente{background:rgba(245,196,0,.1);border-color:rgba(245,196,0,.3);color:var(--gold);}
-.ouv-price{font-size:.82rem;font-weight:700;color:var(--snow);margin-top:7px;}
-.ouv-note-preview{font-size:.72rem;color:var(--fog);margin-top:5px;line-height:1.4;font-style:italic;}
-.ouv-acts{display:flex;gap:6px;margin-top:10px;}
-.ouv-card-acts{position:absolute;top:8px;right:8px;display:flex;gap:4px;opacity:0;transition:opacity .15s;}
-.ouv-card:hover .ouv-card-acts{opacity:1;}
-.ouv-hit-badge{position:absolute;top:8px;left:8px;background:rgba(168,85,247,.85);color:#fff;font-size:.6rem;font-weight:700;padding:2px 7px;border-radius:10px;}
-
 @media(max-width:640px){
   main{padding:18px 14px;}
   .fields-row{grid-template-columns:1fr;}
@@ -301,30 +272,6 @@ select option{background:var(--s2);}
   </div>
 </div>
 
-<!-- VUE : OUVERTURES -->
-<div class="view" id="viewOuvertures">
-  <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px">
-    <div>
-      <h1 class="page-title">📦 Suivi d'ouverture</h1>
-      <p class="page-subtitle">Tes displays, ETB, coffrets — scellés ou ouverts</p>
-    </div>
-    <button class="btn" onclick="openOuvModal()">+ Ajouter</button>
-  </div>
-  <div class="stats-bar" style="margin-bottom:20px">
-    <div class="stat-card"><div class="stat-label">Total</div><div class="stat-value" id="ouvStatTotal">0</div></div>
-    <div class="stat-card"><div class="stat-label">⏳ En attente</div><div class="stat-value gold" id="ouvStatAtt">0</div></div>
-    <div class="stat-card"><div class="stat-label">✅ Ouverts</div><div class="stat-value green" id="ouvStatOuv">0</div></div>
-    <div class="stat-card"><div class="stat-label">💰 Investi</div><div class="stat-value" id="ouvStatVal">—</div></div>
-  </div>
-  <div style="display:flex;gap:7px;margin-bottom:18px;flex-wrap:wrap;align-items:center">
-    <button class="btn ghost sm on" id="ouvFA" onclick="ouvSetF('all',this)">Tous</button>
-    <button class="btn ghost sm" id="ouvFT" onclick="ouvSetF('attente',this)">⏳ En attente</button>
-    <button class="btn ghost sm" id="ouvFO" onclick="ouvSetF('ouvert',this)">✅ Ouverts</button>
-    <input id="ouvSearch" style="margin-left:auto;background:var(--s2);border:1px solid var(--border2);color:var(--snow);padding:7px 12px;border-radius:8px;font-size:.84rem;outline:none;width:200px;font-family:inherit" placeholder="🔍 Rechercher…" oninput="renderOuv()"/>
-  </div>
-  <div class="ouv-grid" id="ouvGrid"></div>
-</div>
-
 </main>
 
 <!-- MODAL : CRÉER / MODIFIER CLASSEUR -->
@@ -396,75 +343,6 @@ select option{background:var(--s2);}
   </div>
 </div>
 
-<!-- MODAL OUVERTURE ADD/EDIT -->
-<div class="overlay" id="modalOuv">
-<div class="modal" style="max-width:540px">
-  <div class="modal-title" id="ouvModalTitle">📦 Nouvelle ouverture</div>
-  <div class="field"><label>Nom *</label><input type="text" id="ouvName" placeholder="Ex: Display SV10 JP"/></div>
-  <div class="fields-row">
-    <div class="field"><label>TCG / Jeu</label>
-      <select id="ouvTcg">
-        <option value="pokemon">🟡 Pokémon</option><option value="op">🔴 One Piece</option>
-        <option value="lorcana">🟣 Lorcana</option><option value="magic">🟠 Magic</option><option value="autre">⚪ Autre</option>
-      </select>
-    </div>
-    <div class="field"><label>Langue</label>
-      <select id="ouvLangue">
-        <option value="Japonais">🇯🇵 Japonais</option><option value="Francais">🇫🇷 Français</option>
-        <option value="Anglais">🇬🇧 Anglais</option><option value="Coreen">🇰🇷 Coréen</option>
-        <option value="Chinois">🇨🇳 Chinois</option><option value="Autre">🌐 Autre</option>
-      </select>
-    </div>
-  </div>
-  <div class="fields-row">
-    <div class="field"><label>Format</label>
-      <select id="ouvFormat">
-        <option value="Display">📦 Display</option><option value="ETB">🎁 ETB</option>
-        <option value="UPC">📬 UPC</option><option value="Coffret">🎀 Coffret</option>
-        <option value="Tin">🥫 Tin</option><option value="Blister">🫧 Blister</option>
-        <option value="Booster">✨ Booster</option><option value="Autre">🔹 Autre</option>
-      </select>
-    </div>
-    <div class="field"><label>Statut</label>
-      <select id="ouvStatut">
-        <option value="attente">⏳ En attente</option><option value="ouvert">✅ Ouvert</option>
-      </select>
-    </div>
-  </div>
-  <div class="fields-row">
-    <div class="field"><label>Prix d'achat (€)</label><input type="number" id="ouvPrix" placeholder="0.00" step="0.01" min="0"/></div>
-    <div class="field"><label>Quantité</label><input type="number" id="ouvQte" value="1" min="1"/></div>
-  </div>
-  <div class="field"><label>Date d'achat</label><input type="date" id="ouvDate"/></div>
-  <div class="field"><label>Image (URL)</label><input type="url" id="ouvImg" placeholder="https://…" oninput="ouvPreviewImg()"/>
-    <img id="ouvImgPrev" style="display:none;width:100%;height:100px;object-fit:contain;border-radius:9px;background:var(--s2);border:1px solid var(--border2);margin-top:6px" referrerpolicy="no-referrer"/>
-  </div>
-  <div class="field"><label>Notes</label><textarea id="ouvNotes" rows="2" placeholder="Informations, provenance…"></textarea></div>
-  <div class="modal-acts">
-    <div style="margin-right:auto">
-      <button id="ouvDelBtn" onclick="deleteOuv()" style="display:none;background:var(--red);color:#fff;border:none;padding:7px 13px;border-radius:8px;font-weight:800;font-size:.8rem;cursor:pointer;font-family:inherit">🗑 Supprimer</button>
-    </div>
-    <button class="btn ghost" onclick="closeOuvModal()">Annuler</button>
-    <button class="btn" onclick="saveOuv()">Enregistrer</button>
-  </div>
-</div>
-</div>
-
-<!-- POPUP NOTE D'OUVERTURE -->
-<div class="overlay" id="modalOuvNote">
-<div class="modal" style="max-width:460px">
-  <div class="modal-title">📦 → ✅ Note d'ouverture</div>
-  <p style="font-size:.84rem;color:var(--mist);margin-bottom:14px">Note les résultats — hits, impressions…</p>
-  <div class="field">
-    <textarea id="ouvNoteText" rows="4" placeholder="Ex: 2× Alt Art, 1× Gold Rare — Très bonne ouverture !"></textarea>
-  </div>
-  <div class="modal-acts">
-    <button class="btn ghost" onclick="ouvNoteSkip()">Passer</button>
-    <button class="btn" onclick="ouvNoteSave()">✅ Confirmer</button>
-  </div>
-</div>
-</div>
-
 <div class="toast" id="toast"></div>
 
 <script>
@@ -483,19 +361,16 @@ const STATUS_PCT = [0,50,100,100,90,0,25];
 // ══ STATE ════════════════════════════════════════════
 let S = (function(){ try { return JSON.parse(localStorage.getItem(SK+'_cache'))||{}; } catch(e) { return {}; } })();
 if (!S.binders)    S.binders    = [];
-if (!S.ouvertures) S.ouvertures = [];
 
 let color1 = COLORS[0], color2 = COLORS[1];
 let editId = null, curBinder = null;
 let allSets = [], selSet = null, searchTmr = null;
-var ouvFiltre = 'all', ouvPendId = null;
 
 // ══ BOOT ═════════════════════════════════════════════
 window._appReady = function() {
   buildColorPickers();
   renderBinders();
   updateStats();
-  updateOuvBadge();
   loadJPSets();
 };
 
@@ -507,9 +382,6 @@ function navTo(view) {
   if (view === 'binders') {
     document.getElementById('navBinders').classList.add('on');
     renderBinders(); updateStats();
-  } else if (view === 'ouvertures') {
-    document.getElementById('navOuvertures').classList.add('on');
-    renderOuv();
   } else if (view === 'detail') {
     document.getElementById('navBinders').classList.add('on');
   }
@@ -772,156 +644,13 @@ function deleteBinderById(id) {
   save(); renderBinders(); updateStats(); showToast('Classeur supprimé','ok');
 }
 
-// ══ OUVERTURES ═══════════════════════════════════════
-function updateOuvBadge() {
-  var nb=document.getElementById('navOuvCount');
-  if (nb) nb.textContent=(S.ouvertures&&S.ouvertures.length>0)?S.ouvertures.length:'';
-}
-function safeImageUrl(url) {
-  if (!url) return '';
-  try {
-    var u = new URL(String(url), window.location.href);
-    if (u.protocol === 'https:' || u.protocol === 'http:') return u.href;
-  } catch(e) {}
-  return '';
-}
-
-function renderOuv() {
-  var q    = document.getElementById('ouvSearch') ? document.getElementById('ouvSearch').value.toLowerCase() : '';
-  var items = S.ouvertures||[];
-  if (ouvFiltre==='attente') items=items.filter(function(o){ return o.statut!=='ouvert'; });
-  if (ouvFiltre==='ouvert')  items=items.filter(function(o){ return o.statut==='ouvert'; });
-  if (q) items=items.filter(function(o){ return (o.name||'').toLowerCase().indexOf(q)>-1; });
-  var all=S.ouvertures||[];
-  var att=all.filter(function(o){ return o.statut!=='ouvert'; }).length;
-  var ouv=all.filter(function(o){ return o.statut==='ouvert'; }).length;
-  var val=all.reduce(function(a,o){ return a+(parseFloat(o.prix)||0)*(parseInt(o.qte)||1); },0);
-  function setEl(id,v){ var el=document.getElementById(id); if(el) el.textContent=v; }
-  setEl('ouvStatTotal',all.length); setEl('ouvStatAtt',att); setEl('ouvStatOuv',ouv);
-  setEl('ouvStatVal',val?val.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €':'—');
-  updateOuvBadge();
-  var grid=document.getElementById('ouvGrid');
-  if (!grid) return;
-  if (!items.length) {
-    grid.innerHTML='<div class="empty"><div class="empty-ico">📦</div><h3>'+(ouvFiltre==='all'?'Aucune ouverture enregistrée':'Aucun résultat')+'</h3>'+(ouvFiltre==='all'?'<p>Clique sur "+ Ajouter" pour commencer.</p><button class="btn" onclick="openOuvModal()">+ Ajouter</button>':'')+'</div>';
-    return;
-  }
-  var FMT_EMO={Display:'📦',ETB:'🎁',UPC:'📬',Coffret:'🎀',Tin:'🥫',Blister:'🫧',Booster:'✨',Autre:'🔹'};
-  var LNG_FL={Japonais:'🇯🇵',Francais:'🇫🇷',Anglais:'🇬🇧',Coreen:'🇰🇷',Chinois:'🇨🇳',Autre:'🌐'};
-  var TCG_EMO={pokemon:'🟡',op:'🔴',lorcana:'🟣',magic:'🟠',autre:'⚪'};
-  var TCG_LBL={pokemon:'Pokémon',op:'One Piece',lorcana:'Lorcana',magic:'Magic',autre:'Autre'};
-  grid.innerHTML=items.map(function(o){
-    var ouvert=o.statut==='ouvert';
-    var te=FMT_EMO[o.format]||'📦';
-    var imgUrl=safeImageUrl(o.img);
-    var img=imgUrl?'<img class="ouv-img" src="'+esc(imgUrl)+'" referrerpolicy="no-referrer" onerror="this.outerHTML=\'<div class=ouv-img-ph>'+te+'</div>\'" loading="lazy"/>':'<div class="ouv-img-ph">'+te+'</div>';
-    var prix=o.prix?(parseFloat(o.prix)*(parseInt(o.qte)||1)).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €':'—';
-    var note=o.noteOuverture?'<div class="ouv-note-preview">💬 '+esc(o.noteOuverture.substring(0,60))+(o.noteOuverture.length>60?'…':'')+'</div>':'';
-    return '<div class="ouv-card status-'+(ouvert?'ouvert':'attente')+'" onclick="openOuvModal(\''+o.id+'\')">' +
-      img+(o.noteOuverture?'<div class="ouv-hit-badge">📝 Note</div>':'')+
-      '<div class="ouv-card-acts"><button class="icon-btn" onclick="event.stopPropagation();deleteOuvById(\''+o.id+'\')" title="Supprimer">🗑</button></div>'+
-      '<div class="ouv-body">'+
-        '<div class="ouv-name">'+esc(o.name)+'</div>'+
-        '<div class="ouv-chips">'+
-          '<span class="chip" style="background:rgba(255,255,255,.05);border-color:var(--border);color:var(--fog)">'+(TCG_EMO[o.tcg]||'⚪')+' '+(TCG_LBL[o.tcg]||o.tcg||'—')+'</span>'+
-          (o.langue?'<span class="chip" style="background:rgba(255,255,255,.04);border-color:var(--border);color:var(--fog)">'+(LNG_FL[o.langue]||'')+' '+esc(o.langue)+'</span>':'')+
-          (o.format?'<span class="chip" style="background:rgba(255,255,255,.04);border-color:var(--border);color:var(--fog)">'+te+' '+esc(o.format)+'</span>':'')+
-        '</div>'+
-        '<span class="ouv-status '+(ouvert?'ouvert':'attente')+'">'+(ouvert?'✅ Ouvert':'⏳ En attente')+'</span>'+
-        '<div class="ouv-price">💰 '+prix+'</div>'+
-        (o.date?'<div style="font-size:.7rem;color:var(--fog);margin-top:4px">📅 '+esc(o.date)+'</div>':'')+
-        note+
-        (!ouvert?'<div class="ouv-acts"><button class="btn sm" style="flex:1" onclick="event.stopPropagation();ouvMarkOpen(\''+o.id+'\')">📦 Marquer ouvert</button></div>':'')+
-      '</div></div>';
-  }).join('');
-}
-function ouvSetF(f,btn) {
-  ouvFiltre=f;
-  ['ouvFA','ouvFT','ouvFO'].forEach(function(id){ var el=document.getElementById(id); if(el) el.classList.remove('on'); });
-  if(btn) btn.classList.add('on');
-  renderOuv();
-}
-function openOuvModal(id) {
-  var o=id?(S.ouvertures||[]).filter(function(x){ return x.id===id; })[0]:null;
-  document.getElementById('ouvModalTitle').textContent=o?'✏️ Modifier':'📦 Nouvelle ouverture';
-  document.getElementById('ouvModalTitle').dataset.editId=id||'';
-  document.getElementById('ouvDelBtn').style.display=o?'block':'none';
-  document.getElementById('ouvName').value   =o?(o.name||''):'';
-  document.getElementById('ouvTcg').value    =o?(o.tcg||'pokemon'):'pokemon';
-  document.getElementById('ouvLangue').value =o?(o.langue||'Japonais'):'Japonais';
-  document.getElementById('ouvFormat').value =o?(o.format||'Display'):'Display';
-  document.getElementById('ouvStatut').value =o?(o.statut||'attente'):'attente';
-  document.getElementById('ouvPrix').value   =o?(o.prix||''):'';
-  document.getElementById('ouvQte').value    =o?(o.qte||1):1;
-  document.getElementById('ouvDate').value   =o?(o.date||''):'';
-  document.getElementById('ouvImg').value    =o?(o.img||''):'';
-  document.getElementById('ouvNotes').value  =o?(o.notes||''):'';
-  var prev=document.getElementById('ouvImgPrev');
-  if(o&&o.img){prev.src=o.img;prev.style.display='block';}else{prev.style.display='none';}
-  document.getElementById('modalOuv').classList.add('open');
-}
-function closeOuvModal() { document.getElementById('modalOuv').classList.remove('open'); }
-function ouvPreviewImg() {
-  var url=document.getElementById('ouvImg').value.trim();
-  var prev=document.getElementById('ouvImgPrev');
-  var safe=safeImageUrl(url);
-  if(safe){prev.src=safe;prev.style.display='block';prev.onerror=function(){prev.style.display='none';};}
-  else prev.style.display='none';
-}
-function saveOuv() {
-  var name=document.getElementById('ouvName').value.trim();
-  if(!name){showToast('Le nom est obligatoire','err');return;}
-  if(!S.ouvertures) S.ouvertures=[];
-  var data={name:name,tcg:document.getElementById('ouvTcg').value,langue:document.getElementById('ouvLangue').value,format:document.getElementById('ouvFormat').value,statut:document.getElementById('ouvStatut').value,prix:parseFloat(document.getElementById('ouvPrix').value)||null,qte:parseInt(document.getElementById('ouvQte').value)||1,date:document.getElementById('ouvDate').value||null,img:document.getElementById('ouvImg').value.trim()||null,notes:document.getElementById('ouvNotes').value.trim()||null,updatedAt:Date.now()};
-  var editId2=document.getElementById('ouvModalTitle').dataset.editId||'';
-  if(editId2){
-    for(var i=0;i<S.ouvertures.length;i++){ if(S.ouvertures[i].id===editId2){ Object.assign(S.ouvertures[i],data); break; } }
-    showToast('Ouverture modifiée ✔','ok');
-  } else {
-    data.id=Date.now().toString(); data.createdAt=Date.now();
-    S.ouvertures.unshift(data);
-    showToast('Ouverture ajoutée ✔','ok');
-  }
-  closeOuvModal(); save(); navTo('ouvertures');
-}
-function deleteOuv() {
-  var editId2=document.getElementById('ouvModalTitle').dataset.editId||'';
-  if(!editId2||!confirm('Supprimer cette ouverture ?')) return;
-  S.ouvertures=(S.ouvertures||[]).filter(function(x){ return x.id!==editId2; });
-  closeOuvModal(); save(); navTo('ouvertures'); showToast('Supprimée','ok');
-}
-function deleteOuvById(id) {
-  if(!confirm('Supprimer cette ouverture ?')) return;
-  S.ouvertures=(S.ouvertures||[]).filter(function(x){ return x.id!==id; });
-  save(); renderOuv(); showToast('Supprimée','ok');
-}
-function ouvMarkOpen(id) {
-  ouvPendId=id;
-  document.getElementById('ouvNoteText').value='';
-  document.getElementById('modalOuvNote').classList.add('open');
-}
-function ouvNoteSkip() { document.getElementById('modalOuvNote').classList.remove('open'); ouvConfirmOpen(ouvPendId,''); }
-function ouvNoteSave() { var note=document.getElementById('ouvNoteText').value.trim(); document.getElementById('modalOuvNote').classList.remove('open'); ouvConfirmOpen(ouvPendId,note); }
-function ouvConfirmOpen(id,note) {
-  if(!S.ouvertures) return;
-  for(var i=0;i<S.ouvertures.length;i++){
-    if(S.ouvertures[i].id===id){
-      S.ouvertures[i].statut='ouvert';
-      S.ouvertures[i].dateOuverture=new Date().toISOString().split('T')[0];
-      S.ouvertures[i].noteOuverture=note||null;
-      S.ouvertures[i].updatedAt=Date.now();
-      break;
-    }
-  }
-  save(); renderOuv(); showToast('Marqué comme ouvert ✔'+(note?' — note enregistrée':''),'ok'); ouvPendId=null;
-}
-
 // ══ SAVE ═════════════════════════════════════════════
 var _savePending = null;
 var _saveInFlight = false;
 
 function save() {
-  var payload={binders:S.binders||[],ouvertures:S.ouvertures||[]};
+  // Les ouvertures vivent dans le même document mais appartiennent à ouvertures.html : ne pas y toucher.
+  var payload={binders:S.binders||[]};
   // Local cache is written immediately so a refresh does not lose recent edits.
   try{localStorage.setItem(SK+'_cache',JSON.stringify(payload));}catch(e){console.warn('local cache:',e);}
   if(!window._uid || !window._setDoc || !window._doc || !window._db) return;
@@ -937,7 +666,7 @@ async function flushSave() {
   _savePending = null;
   _saveInFlight = true;
   try {
-    await window._setDoc(window._doc(window._db,'binders_v2',window._uid),payload);
+    await window._setDoc(window._doc(window._db,'binders_v2',window._uid),payload,{merge:true});
   } catch(e) {
     console.warn('Firestore save:',e);
     // Keep the latest payload queued; it can be retried on the next save.
@@ -954,7 +683,7 @@ document.addEventListener('visibilitychange',function(){ if(document.visibilityS
 window.addEventListener('pagehide',function(){ if(_savePending) flushSave(); });
 
 // ══ UTILS ════════════════════════════════════════════
-function logout() { if(window._signOut&&window._auth) window._signOut(window._auth).then(function(){ window.location.href='index.html'; }); }
+function logout() { clearLocalCaches(); if(window._signOut&&window._auth) window._signOut(window._auth).then(function(){ window.location.href='index.html'; }); }
 var _toastT;
 function showToast(msg,type) {
   var t=document.getElementById('toast');
