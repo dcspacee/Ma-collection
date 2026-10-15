@@ -39,7 +39,7 @@ onAuthStateChanged(auth, user => {
 </script>
 
 <style>
-:root { --fog:#4a6278; --border:#1a2e42; }
+:root { --fog:#7d92a8; --border:#1a2e42; }
 
 /* ── RESET & BASE ── */
 *, *::before, *::after { box-sizing: border-box; margin:0; padding:0; }
@@ -86,7 +86,7 @@ body::before {
   top: 20px;
 }
 .dash-title {
-  font-size: .62rem; font-weight: 700; color: #4a6278;
+  font-size: .62rem; font-weight: 700; color: #7d92a8;
   text-transform: uppercase; letter-spacing: .08em;
   margin-bottom: 12px; display: flex; align-items: center; gap: 6px;
 }
@@ -104,7 +104,7 @@ body::before {
 }
 .dash-stat:hover { border-color: rgba(255,255,255,.12); }
 .dash-stat-label {
-  font-size: .6rem; font-weight: 700; color: #4a6278;
+  font-size: .6rem; font-weight: 700; color: #7d92a8;
   text-transform: uppercase; letter-spacing: .06em; margin-bottom: 3px;
 }
 .dash-stat-val {
@@ -114,8 +114,8 @@ body::before {
 .dash-stat-val.green  { color: #22c55e; }
 .dash-stat-val.blue   { color: #3b82f6; }
 .dash-stat-val.purple { color: #a855f7; }
-.dash-stat-sub { font-size: .62rem; color: #4a6278; margin-top: 2px; }
-.dash-loading { color: #4a6278; font-size: .75rem; padding: 4px 0; }
+.dash-stat-sub { font-size: .62rem; color: #7d92a8; margin-top: 2px; }
+.dash-loading { color: #7d92a8; font-size: .75rem; padding: 4px 0; }
 
 /* ── CARDS AREA ── */
 .hub-cards-wrap {
@@ -183,7 +183,7 @@ body::before {
   transition: border-color .18s, box-shadow .18s;
   font-family: inherit;
 }
-.login-field input::placeholder { color: #536b88; }
+.login-field input::placeholder { color: #7d92a8; }
 .login-field input:focus {
   border-color: #f5c400;
   box-shadow: 0 0 0 3px rgba(245,196,0,.1);
@@ -203,7 +203,7 @@ body::before {
 
 .login-sep {
   display:flex; align-items:center; gap:10px;
-  margin: 14px 0; color: #2a3a4e; font-size: .75rem;
+  margin: 14px 0; color: #7d92a8; font-size: .75rem;
 }
 .login-sep::before, .login-sep::after {
   content:''; flex:1; height:1px; background: rgba(255,255,255,.07);
@@ -228,7 +228,7 @@ body::before {
 }
 .login-switch {
   text-align: center; margin-top: 14px;
-  font-size: .78rem; color: #536b88;
+  font-size: .78rem; color: #7d92a8;
 }
 .login-switch button {
   background: none; border: none; color: #f5c400;
@@ -263,7 +263,7 @@ body::before {
 .hub-logo-text em { color: #f5c400; font-style:normal; }
 
 .hub-right { display:flex; align-items:center; gap: 12px; }
-.hub-user { font-size: .7rem; color: #536b88; }
+.hub-user { font-size: .7rem; color: #7d92a8; }
 .hub-logout {
   background: rgba(239,68,68,.12);
   border: 1px solid rgba(239,68,68,.25);
@@ -301,7 +301,7 @@ body::before {
 .hub-title em { font-style:normal; color:#f5c400; }
 
 .hub-sub {
-  font-size: .85rem; color: #536b88;
+  font-size: .85rem; color: #7d92a8;
   text-align:center; max-width:380px;
   margin-bottom: 44px; line-height:1.6;
 }
@@ -365,16 +365,16 @@ body::before {
 }
 .card-label {
   font-size: .6rem; font-weight:700;
-  text-transform:uppercase; letter-spacing:.1em; color:#536b88;
+  text-transform:uppercase; letter-spacing:.1em; color:#7d92a8;
 }
 .card-col .card-label    { color:#4f6ef7; }
 .card-binder .card-label { color:#f5c400; }
 
 .card-title { font-size:1.05rem; font-weight:800; color:#fff; }
-.card-desc  { font-size:.78rem; color:#536b88; line-height:1.6; flex:1; }
+.card-desc  { font-size:.78rem; color:#7d92a8; line-height:1.6; flex:1; }
 .card-cta   {
   display:inline-flex; align-items:center; gap:5px;
-  font-size:.72rem; font-weight:700; color:#536b88;
+  font-size:.72rem; font-weight:700; color:#7d92a8;
   transition:color .15s;
 }
 .app-card:hover .card-cta      { color:#dce8f0; }
@@ -388,13 +388,13 @@ body::before {
   font-size:.58rem; font-weight:700;
   background:rgba(255,255,255,.06);
   border:1px solid rgba(255,255,255,.1);
-  color:#536b88; padding:2px 7px; border-radius:20px;
+  color:#7d92a8; padding:2px 7px; border-radius:20px;
   text-transform:uppercase; letter-spacing:.06em;
 }
 
 footer {
   text-align:center; padding:18px;
-  font-size:.65rem; color:#1d2a38;
+  font-size:.65rem; color:#7d92a8;
   position:relative; z-index:1;
 }
 
@@ -540,7 +540,7 @@ footer {
       </div><!-- hub-cards-wrap -->
     </div><!-- hub-layout -->
   <div style="text-align:center;padding:20px 0 8px;position:relative;z-index:1;">
-    <a href="patchnotes.html" style="font-size:.75rem;color:#4a6278;text-decoration:none;display:inline-flex;align-items:center;gap:6px;transition:color .15s" onmouseover="this.style.color='#f5c400'" onmouseout="this.style.color=''">
+    <a href="patchnotes.html" style="font-size:.75rem;color:#7d92a8;text-decoration:none;display:inline-flex;align-items:center;gap:6px;transition:color .15s" onmouseover="this.style.color='#f5c400'" onmouseout="this.style.color=''">
       📋 Voir les notes de version &nbsp;·&nbsp; <strong>V1.1</strong>
     </a>
   </div>

@@ -62,7 +62,7 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: #05080d; color: #
 .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 2rem; }
 .stat { background: #0f1923; padding: 1.5rem; border-radius: 14px; border: 1px solid #1d2e42; box-shadow: 0 2px 8px rgba(0,0,0,0.3); transition: all 0.3s; }
 .stat:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.4); transform: translateY(-2px); }
-.stat-label { font-size: 11px; color: #536b88; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; margin-bottom: 8px; }
+.stat-label { font-size: 11px; color: #7d92a8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; margin-bottom: 8px; }
 .stat-value { font-size: 28px; font-weight: 700; color: #dce8f0; }
 .stat-value.success { color: #1a9e5f; }
 .stat-value.danger { color: #d94040; }
@@ -100,7 +100,7 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: #05080d; color: #
 .filter-section { background: #0f1923; border-radius: 14px; border: 1px solid #1d2e42; padding: 1.5rem; margin-bottom: 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
 .filter-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1.2rem; }
 .filter-group { display: flex; flex-direction: column; }
-.filter-group label { font-size: 11px; color: #536b88; text-transform: uppercase; margin-bottom: 8px; font-weight: 600; letter-spacing: 0.5px; }
+.filter-group label { font-size: 11px; color: #7d92a8; text-transform: uppercase; margin-bottom: 8px; font-weight: 600; letter-spacing: 0.5px; }
 .filter-group select { font-size: 13px; border: 1px solid #1d2e42; border-radius: 10px; padding: 10px 12px; background: #16222f; color: #dce8f0; outline: none; cursor: pointer; transition: all 0.25s; font-weight: 500; font-family: inherit; }
 .filter-group select:hover { border-color: #4f6ef7; box-shadow: 0 2px 8px rgba(79,110,247,0.2); }
 .filter-group select:focus { border-color: #4f6ef7; box-shadow: 0 0 0 3px rgba(79,110,247,0.15); }
@@ -212,15 +212,15 @@ td select.statut-select:hover { border-color: #4f6ef7; }
   transition: border-color .15s;
 }
 .cm-url-input:focus { border-color: #4f6ef7; }
-.cm-url-input::placeholder { color: #536b88; }
+.cm-url-input::placeholder { color: #7d92a8; }
 .cm-go-btn {
-  background: #16222f; border: 1px solid #1d2e42; color: #536b88;
+  background: #16222f; border: 1px solid #1d2e42; color: #7d92a8;
   width: 26px; height: 26px; border-radius: 7px; cursor: pointer;
   font-size: 12px; display: flex; align-items: center; justify-content: center;
   transition: all 0.18s; flex-shrink: 0; text-decoration: none;
 }
 .cm-go-btn:hover { border-color: #4f6ef7; color: #4f6ef7; background: #1a2e42; }
-.cm-empty { color: #536b88; font-size: 12px; }
+.cm-empty { color: #7d92a8; font-size: 12px; }
 
 
 /* ===== SCROLLBAR ===== */
@@ -639,7 +639,7 @@ function afficherTableau() {
 
     // ── Lignes normales ───────────────────────────────────────────────────
     tr.innerHTML =
-      '<td style="display:flex;gap:4px"><button class="btn-del" onclick="openInvestModal(' + ligne.id + ')" title="Modifier" style="background:none;border:1px solid #1a2e42;color:#7a96aa;width:26px;height:26px;border-radius:6px;cursor:pointer;font-size:.8rem">✏️</button><button class="btn-del" onclick="supprimerLigne(' + ligne.id + ')">🗑</button></td>' +
+      '<td style="display:flex;gap:4px"><button class="btn-del" onclick="openInvestModal(' + ligne.id + ')" title="Modifier" style="background:none;border:1px solid #1a2e42;color:#a3b6c7;width:26px;height:26px;border-radius:6px;cursor:pointer;font-size:.8rem">✏️</button><button class="btn-del" onclick="supprimerLigne(' + ligne.id + ')">🗑</button></td>' +
       '<td><input type="text" value="' + escH(ligne.nom) + '" placeholder="Nom…"' +
           ' onchange="donnees.find(function(l){return l.id===' + ligne.id + '}).nom=this.value;sauvegarder()"></td>' +
 
@@ -968,13 +968,13 @@ function deleteInvestModal() {
   <div style="display:grid;grid-template-columns:1fr;gap:14px">
 
     <div style="display:flex;flex-direction:column;gap:6px">
-      <label style="font-size:.74rem;font-weight:700;color:#7a96aa;text-transform:uppercase;letter-spacing:.06em">Nom *</label>
+      <label style="font-size:.74rem;font-weight:700;color:#a3b6c7;text-transform:uppercase;letter-spacing:.06em">Nom *</label>
       <input type="text" id="iNom" placeholder="Ex: Display SV10 JP Écarlate & Violet" style="background:#111f2e;border:1px solid #223344;color:#dce8f2;padding:11px 14px;border-radius:9px;font-size:.92rem;outline:none;width:100%;font-family:inherit"/>
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
       <div style="display:flex;flex-direction:column;gap:6px">
-        <label style="font-size:.74rem;font-weight:700;color:#7a96aa;text-transform:uppercase;letter-spacing:.06em">Format</label>
+        <label style="font-size:.74rem;font-weight:700;color:#a3b6c7;text-transform:uppercase;letter-spacing:.06em">Format</label>
         <select id="iFormat" style="background:#111f2e;border:1px solid #223344;color:#dce8f2;padding:11px 14px;border-radius:9px;font-size:.92rem;outline:none;width:100%;font-family:inherit">
           <option value="">— Choisir —</option>
           <option value="carte">🃏 Carte</option>
@@ -988,7 +988,7 @@ function deleteInvestModal() {
         </select>
       </div>
       <div style="display:flex;flex-direction:column;gap:6px">
-        <label style="font-size:.74rem;font-weight:700;color:#7a96aa;text-transform:uppercase;letter-spacing:.06em">Langue</label>
+        <label style="font-size:.74rem;font-weight:700;color:#a3b6c7;text-transform:uppercase;letter-spacing:.06em">Langue</label>
         <select id="iLangue" style="background:#111f2e;border:1px solid #223344;color:#dce8f2;padding:11px 14px;border-radius:9px;font-size:.92rem;outline:none;width:100%;font-family:inherit">
           <option value="Japonais">🇯🇵 Japonais</option>
           <option value="Francais">🇫🇷 Français</option>
@@ -1002,26 +1002,26 @@ function deleteInvestModal() {
 
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">
       <div style="display:flex;flex-direction:column;gap:6px">
-        <label style="font-size:.74rem;font-weight:700;color:#7a96aa;text-transform:uppercase;letter-spacing:.06em">Prix achat (€)</label>
+        <label style="font-size:.74rem;font-weight:700;color:#a3b6c7;text-transform:uppercase;letter-spacing:.06em">Prix achat (€)</label>
         <input type="number" id="iAchat" placeholder="0.00" step="0.01" min="0" style="background:#111f2e;border:1px solid #223344;color:#dce8f2;padding:11px 14px;border-radius:9px;font-size:.92rem;outline:none;width:100%;font-family:inherit"/>
       </div>
       <div style="display:flex;flex-direction:column;gap:6px">
-        <label style="font-size:.74rem;font-weight:700;color:#7a96aa;text-transform:uppercase;letter-spacing:.06em">Quantité</label>
+        <label style="font-size:.74rem;font-weight:700;color:#a3b6c7;text-transform:uppercase;letter-spacing:.06em">Quantité</label>
         <input type="number" id="iQte" value="1" min="1" style="background:#111f2e;border:1px solid #223344;color:#dce8f2;padding:11px 14px;border-radius:9px;font-size:.92rem;outline:none;width:100%;font-family:inherit"/>
       </div>
       <div style="display:flex;flex-direction:column;gap:6px">
-        <label style="font-size:.74rem;font-weight:700;color:#7a96aa;text-transform:uppercase;letter-spacing:.06em">Revente estim. (€)</label>
+        <label style="font-size:.74rem;font-weight:700;color:#a3b6c7;text-transform:uppercase;letter-spacing:.06em">Revente estim. (€)</label>
         <input type="number" id="iPotentiel" placeholder="0.00" step="0.01" min="0" style="background:#111f2e;border:1px solid #223344;color:#dce8f2;padding:11px 14px;border-radius:9px;font-size:.92rem;outline:none;width:100%;font-family:inherit"/>
       </div>
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
       <div style="display:flex;flex-direction:column;gap:6px">
-        <label style="font-size:.74rem;font-weight:700;color:#7a96aa;text-transform:uppercase;letter-spacing:.06em">Revente réelle (€)</label>
+        <label style="font-size:.74rem;font-weight:700;color:#a3b6c7;text-transform:uppercase;letter-spacing:.06em">Revente réelle (€)</label>
         <input type="number" id="iDefinitif" placeholder="0.00" step="0.01" min="0" style="background:#111f2e;border:1px solid #223344;color:#dce8f2;padding:11px 14px;border-radius:9px;font-size:.92rem;outline:none;width:100%;font-family:inherit"/>
       </div>
       <div style="display:flex;flex-direction:column;gap:6px">
-        <label style="font-size:.74rem;font-weight:700;color:#7a96aa;text-transform:uppercase;letter-spacing:.06em">Statut</label>
+        <label style="font-size:.74rem;font-weight:700;color:#a3b6c7;text-transform:uppercase;letter-spacing:.06em">Statut</label>
         <select id="iStatut" style="background:#111f2e;border:1px solid #223344;color:#dce8f2;padding:11px 14px;border-radius:9px;font-size:.92rem;outline:none;width:100%;font-family:inherit">
           <option value="stock">📦 En stock</option>
           <option value="vente">🏷️ En vente</option>
@@ -1032,20 +1032,20 @@ function deleteInvestModal() {
     </div>
 
     <div style="display:flex;flex-direction:column;gap:6px">
-      <label style="font-size:.74rem;font-weight:700;color:#7a96aa;text-transform:uppercase;letter-spacing:.06em">Lien Cardmarket</label>
+      <label style="font-size:.74rem;font-weight:700;color:#a3b6c7;text-transform:uppercase;letter-spacing:.06em">Lien Cardmarket</label>
       <div style="display:flex;gap:8px">
         <input type="url" id="iCmLink" placeholder="https://www.cardmarket.com/…" style="background:#111f2e;border:1px solid #223344;color:#dce8f2;padding:11px 14px;border-radius:9px;font-size:.92rem;outline:none;flex:1;font-family:inherit"/>
-        <button onclick="investOpenCM()" style="background:#111f2e;border:1px solid #223344;color:#7a96aa;padding:0 14px;border-radius:9px;cursor:pointer;font-size:.86rem;white-space:nowrap;font-family:inherit">🔍 Voir</button>
+        <button onclick="investOpenCM()" style="background:#111f2e;border:1px solid #223344;color:#a3b6c7;padding:0 14px;border-radius:9px;cursor:pointer;font-size:.86rem;white-space:nowrap;font-family:inherit">🔍 Voir</button>
       </div>
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
       <div style="display:flex;flex-direction:column;gap:6px">
-        <label style="font-size:.74rem;font-weight:700;color:#7a96aa;text-transform:uppercase;letter-spacing:.06em">Date d'achat</label>
+        <label style="font-size:.74rem;font-weight:700;color:#a3b6c7;text-transform:uppercase;letter-spacing:.06em">Date d'achat</label>
         <input type="date" id="iDate" style="background:#111f2e;border:1px solid #223344;color:#dce8f2;padding:11px 14px;border-radius:9px;font-size:.92rem;outline:none;width:100%;font-family:inherit"/>
       </div>
       <div style="display:flex;flex-direction:column;gap:6px">
-        <label style="font-size:.74rem;font-weight:700;color:#7a96aa;text-transform:uppercase;letter-spacing:.06em">Image (URL)</label>
+        <label style="font-size:.74rem;font-weight:700;color:#a3b6c7;text-transform:uppercase;letter-spacing:.06em">Image (URL)</label>
         <input type="url" id="iImg" placeholder="https://…" oninput="investPreviewImg()" style="background:#111f2e;border:1px solid #223344;color:#dce8f2;padding:11px 14px;border-radius:9px;font-size:.92rem;outline:none;width:100%;font-family:inherit"/>
       </div>
     </div>
@@ -1053,7 +1053,7 @@ function deleteInvestModal() {
     <img id="iImgPreview" style="display:none;width:100%;height:110px;object-fit:contain;border-radius:9px;background:#111f2e;border:1px solid #223344" referrerpolicy="no-referrer"/>
 
     <div style="display:flex;flex-direction:column;gap:6px">
-      <label style="font-size:.74rem;font-weight:700;color:#7a96aa;text-transform:uppercase;letter-spacing:.06em">Notes</label>
+      <label style="font-size:.74rem;font-weight:700;color:#a3b6c7;text-transform:uppercase;letter-spacing:.06em">Notes</label>
       <textarea id="iNotes" rows="2" placeholder="Infos complémentaires…" style="background:#111f2e;border:1px solid #223344;color:#dce8f2;padding:11px 14px;border-radius:9px;font-size:.92rem;outline:none;width:100%;font-family:inherit;resize:vertical"></textarea>
     </div>
 
