@@ -29,16 +29,18 @@ onAuthStateChanged(auth, async user => {
   window._uid   = user.uid;
   window._email = user.email || user.displayName || '';
   document.getElementById('hdrEmail').textContent = window._email;
-  if (localStorage.getItem('tcg_owner') !== user.uid) S.ouvertures = []; // copie locale d'un autre compte
+  if (localStorage.getItem('tcg_owner') !== user.uid) { S.ouvertures = []; S.amis = []; S.extensions = []; } // copie locale d'un autre compte
   claimLocalCaches(user.uid);
   try {
     const snap = await getDoc(doc(db, 'binders_v2', user.uid));
     if (snap.exists()) {
       const d = snap.data();
       S.ouvertures = d.ouvertures || [];
-      try { localStorage.setItem(SK+'_cache', JSON.stringify({ouvertures:S.ouvertures})); } catch(e) {}
+      S.amis       = d.amis       || [];
+      S.extensions = d.extensions || [];
+      try { localStorage.setItem(SK+'_cache', JSON.stringify(S)); } catch(e) {}
     } else if ((S.ouvertures||[]).length > 0) {
-      await setDoc(doc(db,'binders_v2',user.uid), {ouvertures:S.ouvertures}, {merge:true}).catch(()=>{});
+      await setDoc(doc(db,'binders_v2',user.uid), {ouvertures:S.ouvertures, amis:S.amis, extensions:S.extensions}, {merge:true}).catch(()=>{});
     }
   } catch(e) { console.warn('Firestore load:', e); }
   if (window._appReady) window._appReady();
@@ -163,11 +165,61 @@ tr.grp-child td:first-child{padding-left:42px;border-left:3px solid rgba(245,196
 .empty h3{font-size:1.05rem;font-weight:700;margin-bottom:8px;}
 .empty p{font-size:.88rem;color:var(--mist);margin-bottom:20px;}
 
-/* CLASSEMENT */
-.rank-coming{text-align:center;padding:80px 24px;}
-.rank-coming .rank-ico{font-size:4rem;margin-bottom:18px;}
-.rank-coming h2{font-size:1.4rem;font-weight:900;margin-bottom:10px;}
-.rank-coming p{font-size:.9rem;color:var(--mist);max-width:420px;margin:0 auto;}
+/* CLASSEMENT — podium */
+.podium{display:flex;align-items:flex-end;justify-content:center;gap:14px;margin:10px 0 30px;min-height:300px;}
+.pod{flex:0 1 200px;display:flex;flex-direction:column;align-items:center;text-align:center;}
+.pod-medal{font-size:2.4rem;line-height:1;margin-bottom:6px;}
+.pod-name{font-size:1.05rem;font-weight:900;color:var(--snow);margin-bottom:2px;word-break:break-word;}
+.pod-pct{font-size:1.5rem;font-weight:900;margin-bottom:2px;}
+.pod-sub{font-size:.72rem;color:var(--mist);margin-bottom:10px;}
+.pod-step{width:100%;border-radius:12px 12px 0 0;display:flex;align-items:flex-start;justify-content:center;padding-top:12px;font-size:2rem;font-weight:900;color:rgba(0,0,0,.45);}
+.pod-1 .pod-step{height:150px;background:linear-gradient(180deg,#f5c400,#b98f00);}
+.pod-2 .pod-step{height:110px;background:linear-gradient(180deg,#cbd5e1,#8a97a8);}
+.pod-3 .pod-step{height:80px;background:linear-gradient(180deg,#e0915a,#a35a2c);}
+.pod-1 .pod-pct{color:var(--gold);} .pod-2 .pod-pct{color:#e2e8f0;} .pod-3 .pod-pct{color:#f0a36f;}
+.pod-empty .pod-step{background:var(--s2);border:1px dashed var(--border2);}
+.rank-list{display:flex;flex-direction:column;gap:8px;margin-bottom:34px;}
+.rank-row{display:flex;align-items:center;gap:14px;background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:12px 16px;}
+.rank-pos{font-weight:900;color:var(--fog);width:28px;}
+.rank-name{font-weight:800;flex:1;}
+.rank-meta{font-size:.76rem;color:var(--mist);}
+.luck{display:inline-flex;align-items:center;gap:4px;font-size:.7rem;font-weight:800;padding:2px 8px;border-radius:10px;margin-top:4px;border:1px solid;}
+.luck-good{background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.35);color:#86efac;}
+.luck-mid{background:rgba(245,196,0,.1);border-color:rgba(245,196,0,.3);color:var(--gold);}
+.luck-bad{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.35);color:#fca5a5;}
+.rank-section{background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:20px;}
+.rank-section h3{font-size:1rem;font-weight:800;margin-bottom:6px;}
+.rank-section p.hint{font-size:.8rem;color:var(--mist);margin-bottom:14px;}
+.chips-edit{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;}
+.ami-chip{display:inline-flex;align-items:center;gap:6px;background:var(--s2);border:1px solid var(--border2);border-radius:20px;padding:5px 6px 5px 12px;font-size:.84rem;font-weight:700;}
+.ami-chip button{background:none;border:none;color:var(--fog);cursor:pointer;font-size:.9rem;padding:0 4px;}
+.ami-chip button:hover{color:#f87171;}
+.inline-add{display:flex;gap:8px;max-width:420px;}
+.ext-table{width:100%;border-collapse:collapse;min-width:0;}
+.ext-table td,.ext-table th{padding:8px 10px;font-size:.82rem;text-align:left;border-bottom:1px solid var(--border);}
+.ext-table th{font-size:.68rem;color:var(--fog);text-transform:uppercase;letter-spacing:.06em;cursor:default;background:none;}
+/* Cases à cocher « présents » et cartes tirées dans la fenêtre d'ouverture */
+.pick-chips{display:flex;flex-wrap:wrap;gap:6px;}
+.field label.pick-chip{display:inline-flex;align-items:center;gap:6px;background:var(--s2);border:1px solid var(--border2);border-radius:20px;padding:6px 12px;font-size:.84rem;font-weight:600;color:var(--snow);text-transform:none;letter-spacing:0;cursor:pointer;user-select:none;}
+.field label.pick-chip.on{border-color:rgba(245,196,0,.5);background:rgba(245,196,0,.08);}
+.pick-chip input{width:auto;accent-color:var(--gold);}
+.pick-chip.on{border-color:rgba(245,196,0,.5);background:rgba(245,196,0,.08);}
+.carte-row{display:grid;grid-template-columns:1fr 80px 120px auto 34px;gap:6px;align-items:center;margin-bottom:6px;}
+.carte-row input[type=text],.carte-row select{padding:8px 10px;font-size:.84rem;}
+.field .carte-row label.hc{display:flex;align-items:center;gap:4px;font-size:.72rem;color:var(--mist);white-space:nowrap;text-transform:none;letter-spacing:0;}
+.carte-row label.hc input{width:auto;accent-color:var(--gold);}
+.score-live{font-size:.82rem;color:var(--mist);margin-top:6px;}
+.lux-section{border-top:1px solid var(--border);margin-top:6px;padding-top:16px;}
+.lux-section > .lux-title{font-size:.8rem;font-weight:800;color:var(--gold);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;}
+@media(max-width:700px){
+  .podium{gap:6px;min-height:250px;}
+  .pod-medal{font-size:1.8rem;} .pod-name{font-size:.88rem;} .pod-pct{font-size:1.15rem;}
+  .pod-1 .pod-step{height:120px;} .pod-2 .pod-step{height:85px;} .pod-3 .pod-step{height:60px;}
+  .carte-row{grid-template-columns:1fr 64px 100px 30px;}
+  .carte-row .del-btn{order:4;}
+  .field .carte-row label.hc{order:5;grid-column:1/-1;}
+  .carte-row .hc-empty{display:none;}
+}
 
 /* MODAL */
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:600;align-items:flex-start;justify-content:center;overflow-y:auto;padding:40px 20px;backdrop-filter:blur(4px);}
@@ -295,12 +347,34 @@ select option{background:var(--s2);}
 
 <!-- ═══ VUE : CLASSEMENT ══════════════════════════════════ -->
 <div class="view" id="viewClassement">
-  <h1 class="page-title">🏆 Classement</h1>
-  <p class="page-subtitle">Tes meilleures ouvertures, sets, et performances.</p>
-  <div class="rank-coming">
-    <div class="rank-ico">🏆</div>
-    <h2>Classement bientôt disponible</h2>
-    <p>Cette section affichera tes tops : meilleurs drops, sets les plus ouverts, ratio hits par display…</p>
+  <h1 class="page-title">🏆 Classement de la chance</h1>
+  <p class="page-subtitle">Qui a eu le plus de chance en ouvrant ses displays ? 100 % = ce que les cotas promettent, au-dessus = chanceux 🍀, en dessous = maudit 💀.</p>
+
+  <div class="podium" id="podium"></div>
+  <div class="rank-list" id="rankList"></div>
+
+  <div class="rank-section">
+    <h3>👥 Amis</h3>
+    <p class="hint">La liste des personnes qu'on peut choisir comme propriétaire ou présentes dans une ouverture. Ajoute-toi aussi !</p>
+    <div class="chips-edit" id="amisList"></div>
+    <div class="inline-add">
+      <input type="text" id="newAmi" placeholder="Prénom ou pseudo" onkeydown="if(event.key==='Enter')addAmi()"/>
+      <button class="btn sm" onclick="addAmi()">+ Ajouter</button>
+    </div>
+  </div>
+
+  <div class="rank-section">
+    <h3>📚 Fiches d'extension (cotas)</h3>
+    <p class="hint">Remplies une fois par extension, puis reprises par chaque ouverture. Elles servent à calculer ce qu'un display « devrait » donner.</p>
+    <div class="table-wrap" style="margin-bottom:12px"><table class="ext-table"><thead><tr><th>Extension</th><th>Boosters</th><th>AR attendues</th><th>SAR attendues</th><th>SAR garantie</th><th></th></tr></thead><tbody id="extList"></tbody></table></div>
+    <button class="btn sm" onclick="openExtModal()">+ Nouvelle fiche</button>
+  </div>
+
+  <div class="rank-section">
+    <h3>🧮 Comment on calcule</h3>
+    <p class="hint" style="margin-bottom:0">Chaque carte rapporte des points : <b>AR</b> pire 1 · ok 2 · meilleure 3 — <b>SAR</b> pire 4 · ok 6 · meilleure 10 — <b>SAR hors cota</b> +5.<br>
+    Points attendus d'un display = AR attendues × 2 + SAR attendues × 6. Chance = points obtenus ÷ points attendus.<br>
+    Le classement fait la moyenne des chances de chaque propriétaire, sur ses displays <b>ouverts</b> qui ont une fiche d'extension.</p>
   </div>
 </div>
 
@@ -372,6 +446,20 @@ select option{background:var(--s2);}
   </div>
   <div class="field"><label>Notes</label><textarea id="mNotes" rows="2" placeholder="Provenance, infos…"></textarea></div>
 
+  <div class="lux-section">
+    <div class="lux-title">🏆 Pour le classement</div>
+    <div class="fields-row">
+      <div class="field"><label>Propriétaire</label><select id="mProprio"></select></div>
+      <div class="field"><label>Fiche d'extension</label><select id="mExt" onchange="renderCartes()"></select></div>
+    </div>
+    <div class="field"><label>Personnes présentes</label><div class="pick-chips" id="mPresents"></div></div>
+    <div class="field"><label>Cartes tirées</label>
+      <div id="mCartes"></div>
+      <button class="btn ghost sm" type="button" onclick="addCarte()" style="align-self:flex-start">+ Ajouter une carte</button>
+      <div class="score-live" id="mScore"></div>
+    </div>
+  </div>
+
   <div class="modal-acts">
     <div style="margin-right:auto">
       <button id="mDelBtn" onclick="deleteItem()" style="display:none;background:var(--red);color:#fff;border:none;padding:7px 13px;border-radius:8px;font-weight:800;font-size:.8rem;cursor:pointer;font-family:inherit">🗑 Supprimer</button>
@@ -399,6 +487,30 @@ select option{background:var(--s2);}
 </div>
 </div>
 
+<!-- ═══ MODAL FICHE D'EXTENSION ══════════════════════════ -->
+<div class="overlay" id="modalExt">
+<div class="modal" style="max-width:480px">
+  <div class="modal-title" id="extTitle">📚 Nouvelle fiche d'extension</div>
+  <div class="field"><label>Nom de l'extension *</label><input type="text" id="eNom" placeholder="Ex: M2 Inferno X (JP)"/></div>
+  <div class="fields-row">
+    <div class="field"><label>Boosters par display</label><input type="number" id="eBoosters" min="0" placeholder="30"/></div>
+    <div class="field"><label>AR attendues / display</label><input type="number" id="eAr" min="0" step="0.5" placeholder="4"/></div>
+  </div>
+  <div class="fields-row">
+    <div class="field"><label>SAR attendues / display</label><input type="number" id="eSar" min="0" step="0.5" placeholder="1"/></div>
+    <div class="field"><label>SAR garantie ?</label>
+      <select id="eGarantie"><option value="oui">✅ Oui</option><option value="non">❌ Non</option></select>
+    </div>
+  </div>
+  <div class="field"><label>Notes</label><input type="text" id="eNotes" placeholder="Ex: 1 SAR ou SR garantie, ~1 AR / 7 boosters"/></div>
+  <div class="modal-acts">
+    <div style="margin-right:auto"><button class="btn danger sm" id="eDelBtn" onclick="deleteExt()" style="display:none">🗑 Supprimer</button></div>
+    <button class="btn ghost" onclick="closeExtModal()">Annuler</button>
+    <button class="btn" onclick="saveExt()">Enregistrer</button>
+  </div>
+</div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -413,8 +525,8 @@ var LNG_FL  = {Japonais:'🇯🇵',Francais:'🇫🇷',Anglais:'🇬🇧',Coreen
 var S = (function(){
   try {
     var cache = JSON.parse(localStorage.getItem(SK+'_cache')||'{}');
-    return {ouvertures: cache.ouvertures||[]};
-  } catch(e) { return {ouvertures:[]}; }
+    return {ouvertures: cache.ouvertures||[], amis: cache.amis||[], extensions: cache.extensions||[]};
+  } catch(e) { return {ouvertures:[], amis:[], extensions:[]}; }
 })();
 
 var curFilter = 'all';
@@ -442,6 +554,7 @@ function navTo(view) {
 function renderAll() {
   updateStats();
   renderTable();
+  renderClassement();
 }
 
 // ══ STATS ════════════════════════════════════════════════
@@ -583,6 +696,8 @@ function rowHTML(o, cls) {
     var dropCell= o.drop&&o.drop.trim()
       ? '<div class="drop-text">'+esc(o.drop)+'</div>'+(isHit(o.drop)?'<span class="hit-badge">💎 Hit</span>':'')
       : '<span class="drop-empty">'+(ouvert?'Aucun drop noté':'—')+'</span>';
+    var sc = scoreOuverture(o);
+    if (sc) dropCell += '<div>'+luckBadge(sc.pct)+(o.proprio?' <span class="drop-empty">'+esc(amiName(o.proprio))+'</span>':'')+'</div>';
     return '<tr'+(cls?' class="'+cls+'"':'')+'>'+
       '<td class="td-name">'+imgEl+'<div><div class="name-main">'+esc(o.name)+'</div>'+(o.notes?'<div class="name-sub">'+esc(o.notes.substring(0,50))+'</div>':'')+'</div></td>'+
       '<td><span class="chip chip-format">'+te+' '+esc(o.format||'—')+'</span></td>'+
@@ -640,7 +755,57 @@ function openModal(id) {
   document.getElementById('mNotes').value  = o?(o.notes||'') :'';
   var prev=document.getElementById('mImgPrev');
   if(o&&o.img){prev.src=o.img;prev.style.display='block';}else{prev.style.display='none';}
+  // Classement
+  fillSelect('mProprio', S.amis, o?o.proprio:'', '— Personne —');
+  fillSelect('mExt', (S.extensions||[]).map(function(e){ return {id:e.id,name:e.nom}; }), o?o.extId:'', '— Aucune fiche —');
+  var presents = o&&o.presents ? o.presents : [];
+  document.getElementById('mPresents').innerHTML = (S.amis||[]).length
+    ? S.amis.map(function(a){ var on=presents.indexOf(a.id)>-1; return '<label class="pick-chip'+(on?' on':'')+'"><input type="checkbox" value="'+esc(a.id)+'"'+(on?' checked':'')+' onchange="this.parentNode.classList.toggle(\'on\',this.checked)"/>'+esc(a.name)+'</label>'; }).join('')
+    : '<span class="drop-empty">Ajoute tes amis dans l\'onglet 🏆 Classement.</span>';
+  editCartes = o&&o.cartes ? JSON.parse(JSON.stringify(o.cartes)) : [];
+  renderCartes();
   document.getElementById('modalMain').classList.add('open');
+}
+
+// ══ CLASSEMENT : fenêtre d'ouverture ═════════════════════
+var editCartes = [];
+function fillSelect(id, list, current, emptyLabel) {
+  document.getElementById(id).innerHTML = '<option value="">'+emptyLabel+'</option>' +
+    (list||[]).map(function(x){ return '<option value="'+esc(x.id)+'"'+(x.id===current?' selected':'')+'>'+esc(x.name)+'</option>'; }).join('');
+}
+function addCarte() { syncCartes(); editCartes.push({nom:'', type:'AR', note:'ok', horsCota:false}); renderCartes(); }
+function removeCarte(i) { syncCartes(); editCartes.splice(i,1); renderCartes(); }
+// Relit les champs avant de redessiner, pour ne rien perdre de ce qui est tapé.
+function syncCartes() {
+  document.querySelectorAll('#mCartes .carte-row').forEach(function(row, i){
+    var c = editCartes[i]; if(!c) return;
+    c.nom = row.querySelector('.c-nom').value.trim();
+    c.type = row.querySelector('.c-type').value;
+    c.note = row.querySelector('.c-note').value;
+    var hc = row.querySelector('.c-hc'); c.horsCota = !!(hc && hc.checked && c.type==='SAR');
+  });
+}
+function renderCartes() {
+  var box = document.getElementById('mCartes');
+  box.innerHTML = editCartes.map(function(c, i){
+    return '<div class="carte-row">'+
+      '<input type="text" class="c-nom" placeholder="Ex: Dracaufeu ex" value="'+esc(c.nom)+'" oninput="updateScoreLive()"/>'+
+      '<select class="c-type" onchange="syncCartes();renderCartes()"><option'+(c.type==='AR'?' selected':'')+'>AR</option><option'+(c.type==='SAR'?' selected':'')+'>SAR</option></select>'+
+      '<select class="c-note" onchange="updateScoreLive()"><option value="pire"'+(c.note==='pire'?' selected':'')+'>💀 Pire</option><option value="ok"'+(c.note==='ok'?' selected':'')+'>👌 Ok</option><option value="meilleure"'+(c.note==='meilleure'?' selected':'')+'>🔥 Meilleure</option></select>'+
+      (c.type==='SAR' ? '<label class="hc"><input type="checkbox" class="c-hc"'+(c.horsCota?' checked':'')+' onchange="updateScoreLive()"/>Hors cota</label>' : '<span class="hc-empty"></span>')+
+      '<button type="button" class="icon-btn del-btn" onclick="removeCarte('+i+')" title="Retirer">✕</button>'+
+    '</div>';
+  }).join('');
+  updateScoreLive();
+}
+function updateScoreLive() {
+  syncCartes();
+  var fake = {statut:'ouvert', extId:document.getElementById('mExt').value, cartes:editCartes, qte:document.getElementById('mQte').value};
+  var sc = scoreOuverture(fake);
+  var el = document.getElementById('mScore');
+  if (!fake.extId) el.textContent = 'Choisis une fiche d\'extension pour calculer la chance.';
+  else if (!sc) el.textContent = 'La fiche n\'a pas d\'AR ni de SAR attendues : impossible de calculer.';
+  else el.innerHTML = sc.pts+' pts sur '+sc.attendu+' attendus → '+luckBadge(sc.pct)+(document.getElementById('mStatut').value!=='ouvert'?' (compté une fois le display ouvert)':'');
 }
 function closeModal() { document.getElementById('modalMain').classList.remove('open'); }
 function previewImg() {
@@ -665,6 +830,10 @@ function saveItem() {
     img:document.getElementById('mImg').value.trim()||null,
     drop:document.getElementById('mDrop').value.trim()||null,
     notes:document.getElementById('mNotes').value.trim()||null,
+    proprio:document.getElementById('mProprio').value||null,
+    extId:document.getElementById('mExt').value||null,
+    presents:[].map.call(document.querySelectorAll('#mPresents input:checked'), function(x){ return x.value; }),
+    cartes:(syncCartes(), editCartes.slice()),
     updatedAt:Date.now()
   };
   var eid=document.getElementById('modalTitle').dataset.editId||'';
@@ -739,10 +908,137 @@ function openDropEdit(id) {
   document.getElementById('modalOpen').classList.add('open');
 }
 
+// ══ CLASSEMENT : score de chance ═════════════════════════
+var PTS = {AR:{pire:1, ok:2, meilleure:3}, SAR:{pire:4, ok:6, meilleure:10}};
+var BONUS_HORS_COTA = 5;
+function extById(id) { return (S.extensions||[]).filter(function(e){ return e.id===id; })[0]; }
+function amiName(id) { var a=(S.amis||[]).filter(function(x){ return x.id===id; })[0]; return a ? a.name : '(ami supprimé)'; }
+// Chance d'une ouverture : points obtenus ÷ points attendus d'après la fiche d'extension. null si pas calculable.
+function scoreOuverture(o) {
+  var ext = extById(o.extId);
+  if (!ext || o.statut!=='ouvert') return null;
+  var q = parseInt(o.qte)||1;
+  var attendu = ((parseFloat(ext.ar)||0)*PTS.AR.ok + (parseFloat(ext.sar)||0)*PTS.SAR.ok) * q;
+  if (!attendu) return null;
+  var pts = (o.cartes||[]).reduce(function(a,c){
+    return a + ((PTS[c.type]||{})[c.note]||0) + (c.type==='SAR'&&c.horsCota ? BONUS_HORS_COTA : 0);
+  }, 0);
+  return {pts:pts, attendu:attendu, pct:Math.round(pts/attendu*100)};
+}
+function luckBadge(pct) {
+  var cls = pct>=110 ? 'luck-good' : pct>=80 ? 'luck-mid' : 'luck-bad';
+  var ico = pct>=110 ? '🍀' : pct>=80 ? '😐' : '💀';
+  return '<span class="luck '+cls+'">'+ico+' '+pct+' %</span>';
+}
+// Moyenne des chances par propriétaire, du plus chanceux au moins chanceux.
+function computeRanking() {
+  var by = {};
+  (S.ouvertures||[]).forEach(function(o){
+    var sc = scoreOuverture(o);
+    if (!sc || !o.proprio) return;
+    var r = by[o.proprio] || (by[o.proprio] = {id:o.proprio, n:0, sum:0, best:null});
+    r.n++; r.sum += sc.pct;
+    if (!r.best || sc.pct > r.best.pct) r.best = {pct:sc.pct, name:o.name};
+  });
+  return Object.keys(by).map(function(k){ var r=by[k]; r.avg=Math.round(r.sum/r.n); return r; })
+    .sort(function(a,b){ return b.avg-a.avg || b.n-a.n; });
+}
+
+// ══ CLASSEMENT : affichage ═══════════════════════════════
+function renderClassement() {
+  var rank = computeRanking();
+  var pod = document.getElementById('podium');
+  if (!pod) return;
+  // Ordre visuel du podium : 2e, 1er, 3e
+  var MEDAL = ['🥇','🥈','🥉'];
+  pod.innerHTML = [1,0,2].map(function(i){
+    var r = rank[i];
+    if (!r) return '<div class="pod pod-'+(i+1)+' pod-empty"><div class="pod-medal" style="opacity:.3">'+MEDAL[i]+'</div><div class="pod-sub">Place libre</div><div class="pod-step">'+(i+1)+'</div></div>';
+    return '<div class="pod pod-'+(i+1)+'">'+
+      '<div class="pod-medal">'+MEDAL[i]+'</div>'+
+      '<div class="pod-name">'+esc(amiName(r.id))+'</div>'+
+      '<div class="pod-pct">'+r.avg+' %</div>'+
+      '<div class="pod-sub">'+r.n+' display'+(r.n>1?'s':'')+' · record '+r.best.pct+' %</div>'+
+      '<div class="pod-step">'+(i+1)+'</div>'+
+    '</div>';
+  }).join('');
+  var list = document.getElementById('rankList');
+  list.innerHTML = rank.length
+    ? rank.slice(3).map(function(r, i){
+        return '<div class="rank-row"><span class="rank-pos">'+(i+4)+'</span><span class="rank-name">'+esc(amiName(r.id))+'</span>'+
+          '<span class="rank-meta">'+r.n+' display'+(r.n>1?'s':'')+' · record '+r.best.pct+' % ('+esc(r.best.name)+')</span>'+luckBadge(r.avg)+'</div>';
+      }).join('')
+    : '<div class="empty" style="padding:30px"><div class="empty-ico">🏆</div><h3>Pas encore de classement</h3><p>1. Ajoute les amis ci-dessous. 2. Crée une fiche d\'extension. 3. Dans une ouverture <b>ouverte</b>, choisis le propriétaire, la fiche et les cartes tirées.</p></div>';
+
+  document.getElementById('amisList').innerHTML = (S.amis||[]).length
+    ? S.amis.map(function(a){ return '<span class="ami-chip">'+esc(a.name)+'<button onclick="removeAmi(\''+a.id+'\')" title="Retirer">✕</button></span>'; }).join('')
+    : '<span class="drop-empty">Aucun ami pour l\'instant.</span>';
+
+  document.getElementById('extList').innerHTML = (S.extensions||[]).length
+    ? S.extensions.map(function(e){
+        return '<tr><td><b>'+esc(e.nom)+'</b>'+(e.notes?'<div class="name-sub">'+esc(e.notes)+'</div>':'')+'</td><td>'+(e.boosters||'—')+'</td><td>'+(e.ar||0)+'</td><td>'+(e.sar||0)+'</td><td>'+(e.garantie==='oui'?'✅':'❌')+'</td>'+
+          '<td><button class="icon-btn" onclick="openExtModal(\''+e.id+'\')" title="Modifier">✏️</button></td></tr>';
+      }).join('')
+    : '<tr><td colspan="6" class="drop-empty">Aucune fiche pour l\'instant.</td></tr>';
+}
+
+// ══ AMIS ═════════════════════════════════════════════════
+function addAmi() {
+  var inp = document.getElementById('newAmi'), name = inp.value.trim();
+  if (!name) return;
+  if ((S.amis||[]).some(function(a){ return a.name.toLowerCase()===name.toLowerCase(); })) { showToast('Déjà dans la liste','err'); return; }
+  S.amis.push({id:Date.now().toString(), name:name});
+  inp.value=''; save(); renderClassement(); showToast(name+' ajouté ✔','ok');
+}
+function removeAmi(id) {
+  var used = (S.ouvertures||[]).filter(function(o){ return o.proprio===id || (o.presents||[]).indexOf(id)>-1; }).length;
+  if (!confirm('Retirer '+amiName(id)+' de la liste ?'+(used?'\n\nIl apparaît dans '+used+' ouverture(s) : elles resteront, mais sans nom.':''))) return;
+  S.amis = S.amis.filter(function(a){ return a.id!==id; });
+  save(); renderAll();
+}
+
+// ══ FICHES D'EXTENSION ═══════════════════════════════════
+var extEditId = null;
+function openExtModal(id) {
+  var e = id ? extById(id) : null;
+  extEditId = e ? id : null;
+  document.getElementById('extTitle').textContent = e ? '✏️ Modifier la fiche' : '📚 Nouvelle fiche d\'extension';
+  document.getElementById('eDelBtn').style.display = e ? 'inline-flex' : 'none';
+  document.getElementById('eNom').value = e ? e.nom : '';
+  document.getElementById('eBoosters').value = e ? (e.boosters||'') : '';
+  document.getElementById('eAr').value = e ? (e.ar||'') : '';
+  document.getElementById('eSar').value = e ? (e.sar||'') : '';
+  document.getElementById('eGarantie').value = e ? (e.garantie||'oui') : 'oui';
+  document.getElementById('eNotes').value = e ? (e.notes||'') : '';
+  document.getElementById('modalExt').classList.add('open');
+}
+function closeExtModal() { document.getElementById('modalExt').classList.remove('open'); extEditId=null; }
+function saveExt() {
+  var nom = document.getElementById('eNom').value.trim();
+  if (!nom) { showToast('Le nom est obligatoire','err'); return; }
+  var data = {
+    nom:nom,
+    boosters:parseInt(document.getElementById('eBoosters').value)||null,
+    ar:parseFloat(document.getElementById('eAr').value)||0,
+    sar:parseFloat(document.getElementById('eSar').value)||0,
+    garantie:document.getElementById('eGarantie').value,
+    notes:document.getElementById('eNotes').value.trim()||null
+  };
+  if (extEditId) Object.assign(extById(extEditId), data);
+  else { data.id = Date.now().toString(); S.extensions.push(data); }
+  closeExtModal(); save(); renderAll(); showToast('Fiche enregistrée ✔','ok');
+}
+function deleteExt() {
+  var used = (S.ouvertures||[]).filter(function(o){ return o.extId===extEditId; }).length;
+  if (!confirm('Supprimer cette fiche ?'+(used?'\n\n'+used+' ouverture(s) l\'utilisent : elles ne compteront plus au classement.':''))) return;
+  S.extensions = S.extensions.filter(function(e){ return e.id!==extEditId; });
+  closeExtModal(); save(); renderAll();
+}
+
 // ══ SAVE ══════════════════════════════════════════════════
 var _savePending=null, _saveInFlight=false;
 function save() {
-  var payload={ouvertures:S.ouvertures||[]};
+  var payload={ouvertures:S.ouvertures||[], amis:S.amis||[], extensions:S.extensions||[]};
   try{localStorage.setItem(SK+'_cache',JSON.stringify(payload));}catch(e){}
   if(!window._uid||!window._setDoc||!window._doc||!window._db) return;
   _savePending=payload;
@@ -755,7 +1051,7 @@ async function flushSave() {
   try {
     // merge : ne touche pas aux classeurs du même document
     await window._setDoc(window._doc(window._db,'binders_v2',window._uid),
-      {ouvertures:payload.ouvertures},{merge:true});
+      payload,{merge:true});
   } catch(e) {
     console.warn('Firestore save:',e);
     _savePending=payload;
