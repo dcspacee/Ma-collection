@@ -694,9 +694,7 @@ function showToast(msg,type) {
   _toastT=setTimeout(function(){ t.classList.remove('on'); },2800);
 }
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-document.querySelectorAll('.overlay').forEach(function(o){
-  o.addEventListener('click',function(e){ if(e.target===o) o.classList.remove('open'); });
-});
+// Clic à côté d'une fenêtre : intentionnellement sans effet (on ne perd pas la saisie). Fermeture via Annuler.
 </script>
 </body>
 </html>

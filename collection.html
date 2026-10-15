@@ -955,11 +955,7 @@ function deleteInvestModal() {
   mettreAJourTotaux();
 }
 
-// Fermer sur backdrop
-// (la fenêtre est déclarée plus bas dans la page, d'où l'écoute sur document)
-document.addEventListener('click', function(e) {
-  if (e.target.id === 'modalInvest') closeInvestModal();
-});
+// Clic à côté de la fenêtre : intentionnellement sans effet (on ne perd pas la saisie). Fermeture via Annuler.
 
 // onAuthStateChanged handles init (see module script above)
 </script>
