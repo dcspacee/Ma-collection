@@ -29,7 +29,7 @@ onAuthStateChanged(auth, async user => {
   window._uid   = user.uid;
   window._email = user.email || user.displayName || '';
   document.getElementById('hdrEmail').textContent = window._email;
-  if (localStorage.getItem('tcg_owner') !== user.uid) { S.ouvertures = []; S.amis = []; S.extensions = []; } // copie locale d'un autre compte
+  if (localStorage.getItem('tcg_owner') !== user.uid) { S.ouvertures = []; S.amis = []; S.extensions = []; S.sessions = []; } // copie locale d'un autre compte
   claimLocalCaches(user.uid);
   try {
     const snap = await getDoc(doc(db, 'binders_v2', user.uid));
@@ -38,9 +38,10 @@ onAuthStateChanged(auth, async user => {
       S.ouvertures = d.ouvertures || [];
       S.amis       = d.amis       || [];
       S.extensions = d.extensions || [];
+      S.sessions   = d.sessions   || [];
       try { localStorage.setItem(SK+'_cache', JSON.stringify(S)); } catch(e) {}
     } else if ((S.ouvertures||[]).length > 0) {
-      await setDoc(doc(db,'binders_v2',user.uid), {ouvertures:S.ouvertures, amis:S.amis, extensions:S.extensions}, {merge:true}).catch(()=>{});
+      await setDoc(doc(db,'binders_v2',user.uid), {ouvertures:S.ouvertures, amis:S.amis, extensions:S.extensions, sessions:S.sessions}, {merge:true}).catch(()=>{});
     }
   } catch(e) { console.warn('Firestore load:', e); }
   if (window._appReady) window._appReady();
@@ -195,6 +196,14 @@ tr.grp-child td:first-child{padding-left:42px;border-left:3px solid rgba(245,196
 .ami-chip button{background:none;border:none;color:var(--fog);cursor:pointer;font-size:.9rem;padding:0 4px;}
 .ami-chip button:hover{color:#f87171;}
 .inline-add{display:flex;gap:8px;max-width:420px;}
+.inline-add .btn{white-space:nowrap;}
+/* Téléphone : l'en-tête ne déborde plus, les onglets défilent */
+@media(max-width:700px){
+  .header{padding:0 10px;gap:8px;}
+  .header-sep,.header-logo,.hdr-email{display:none;}
+  .top-nav{overflow-x:auto;}
+  .top-nav-btn{padding:6px 10px;white-space:nowrap;}
+}
 .ext-table{width:100%;border-collapse:collapse;min-width:0;}
 .ext-table td,.ext-table th{padding:8px 10px;font-size:.82rem;text-align:left;border-bottom:1px solid var(--border);}
 .ext-table th{font-size:.72rem;color:var(--fog);text-transform:uppercase;letter-spacing:.06em;cursor:default;background:none;}
@@ -204,20 +213,43 @@ tr.grp-child td:first-child{padding-left:42px;border-left:3px solid rgba(245,196
 .field label.pick-chip.on{border-color:rgba(245,196,0,.5);background:rgba(245,196,0,.08);}
 .pick-chip input{width:auto;accent-color:var(--gold);}
 .pick-chip.on{border-color:rgba(245,196,0,.5);background:rgba(245,196,0,.08);}
-.carte-row{display:grid;grid-template-columns:1fr 80px 120px auto 34px;gap:6px;align-items:center;margin-bottom:6px;}
+.carte-row{display:grid;grid-template-columns:1fr 108px 124px auto 34px;gap:6px;align-items:center;margin-bottom:6px;}
 .carte-row input[type=text],.carte-row select{padding:8px 10px;font-size:.84rem;}
-.field .carte-row label.hc{display:flex;align-items:center;gap:4px;font-size:.72rem;color:var(--mist);white-space:nowrap;text-transform:none;letter-spacing:0;}
+.carte-row label.hc{display:flex;align-items:center;gap:4px;font-size:.72rem;color:var(--mist);white-space:nowrap;text-transform:none;letter-spacing:0;}
 .carte-row label.hc input{width:auto;accent-color:var(--gold);}
 .score-live{font-size:.82rem;color:var(--mist);margin-top:6px;}
+/* PACK OPENING */
+.po-steps{display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap;}
+.po-step{font-size:.76rem;font-weight:700;color:var(--fog);padding:5px 11px;border-radius:20px;border:1px solid var(--border);}
+.po-step.on{color:#000;background:var(--gold);border-color:var(--gold);}
+.po-step.done{color:var(--gold);border-color:rgba(245,196,0,.35);}
+.po-card{background:var(--s2);border:1px solid var(--border2);border-radius:12px;padding:14px;margin-bottom:12px;}
+.po-card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap;}
+.po-who{font-size:1rem;font-weight:900;}
+.po-quick{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;}
+.po-grid{display:grid;grid-template-columns:1.3fr 1.3fr .7fr;gap:10px;}
+.sess-card{background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:14px;}
+.sess-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px;}
+.sess-title{font-size:1.05rem;font-weight:900;}
+.sess-date{font-size:.8rem;color:var(--mist);}
+.sess-row{display:flex;align-items:center;gap:12px;padding:9px 0;border-top:1px solid var(--border);flex-wrap:wrap;}
+.sess-medal{width:28px;font-size:1.2rem;text-align:center;}
+.sess-name{font-weight:800;min-width:90px;}
+.sess-disp{flex:1;font-size:.8rem;color:var(--mist);min-width:140px;}
+.sess-cards{width:100%;padding-left:40px;font-size:.78rem;color:var(--mist);}
+.podium.mini{min-height:220px;margin:4px 0 14px;}
+.podium.mini .pod-1 .pod-step{height:90px;} .podium.mini .pod-2 .pod-step{height:65px;} .podium.mini .pod-3 .pod-step{height:45px;}
+.podium.mini .pod-step{font-size:1.3rem;padding-top:6px;}
+@media(max-width:700px){ .po-grid{grid-template-columns:1fr;} .sess-cards{padding-left:0;} }
 .lux-section{border-top:1px solid var(--border);margin-top:6px;padding-top:16px;}
 .lux-section > .lux-title{font-size:.8rem;font-weight:800;color:var(--gold);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;}
 @media(max-width:700px){
   .podium{gap:6px;min-height:250px;}
   .pod-medal{font-size:1.8rem;} .pod-name{font-size:.88rem;} .pod-pct{font-size:1.15rem;}
   .pod-1 .pod-step{height:120px;} .pod-2 .pod-step{height:85px;} .pod-3 .pod-step{height:60px;}
-  .carte-row{grid-template-columns:1fr 64px 100px 30px;}
+  .carte-row{grid-template-columns:1fr 96px 108px 30px;}
   .carte-row .del-btn{order:4;}
-  .field .carte-row label.hc{order:5;grid-column:1/-1;}
+  .carte-row label.hc{order:5;grid-column:1/-1;}
   .carte-row .hc-empty{display:none;}
 }
 
@@ -258,6 +290,7 @@ select option{background:var(--s2);}
   <div class="header-logo"><div class="bolt"></div>My Collection <em>TCG</em></div>
   <nav class="top-nav">
     <button class="top-nav-btn on"  id="navPrincipal"  onclick="navTo('principal')">📦 Ouvertures</button>
+    <button class="top-nav-btn"     id="navSessions"   onclick="navTo('sessions')">🎉 Pack Opening</button>
     <button class="top-nav-btn"     id="navClassement" onclick="navTo('classement')">🏆 Classement</button>
   </nav>
   <div class="header-right">
@@ -345,6 +378,18 @@ select option{background:var(--s2);}
 
 </div>
 
+<!-- ═══ VUE : PACK OPENING ════════════════════════════════ -->
+<div class="view" id="viewSessions">
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px">
+    <div>
+      <h1 class="page-title">🎉 Pack Opening</h1>
+      <p class="page-subtitle">Une session d'ouverture entre amis : qui était là, le display de chacun, chaque drop… et la note de chance de chacun.</p>
+    </div>
+    <button class="btn" onclick="openPO()">🎉 Nouveau Pack Opening</button>
+  </div>
+  <div id="sessionsList"></div>
+</div>
+
 <!-- ═══ VUE : CLASSEMENT ══════════════════════════════════ -->
 <div class="view" id="viewClassement">
   <h1 class="page-title">🏆 Classement de la chance</h1>
@@ -372,7 +417,8 @@ select option{background:var(--s2);}
 
   <div class="rank-section">
     <h3>🧮 Comment on calcule</h3>
-    <p class="hint" style="margin-bottom:0">Chaque carte rapporte des points : <b>AR</b> pire 1 · ok 2 · meilleure 3 — <b>SAR</b> pire 4 · ok 6 · meilleure 10 — <b>SAR hors cota</b> +5.<br>
+    <p class="hint" style="margin-bottom:0">Chaque carte rapporte des points : <b>AR</b> pire 1 · ok 2 · meilleure 3 — <b>Autre hit</b> (SR, UR, gold…) pire 2 · ok 3 · meilleure 5 — <b>SAR</b> pire 4 · ok 6 · meilleure 10.<br>
+    Bonus <b>hors cota</b> (carte en plus de ce que promet la cota) : AR +2 · autre hit +3 · SAR +5.<br>
     Points attendus d'un display = AR attendues × 2 + SAR attendues × 6. Chance = points obtenus ÷ points attendus.<br>
     Le classement fait la moyenne des chances de chaque propriétaire, sur ses displays <b>ouverts</b> qui ont une fiche d'extension.</p>
   </div>
@@ -487,11 +533,33 @@ select option{background:var(--s2);}
 </div>
 </div>
 
+<!-- ═══ MODAL PACK OPENING (assistant en 4 étapes) ════════ -->
+<div class="overlay" id="modalPO">
+<div class="modal" style="max-width:760px;position:relative">
+  <button onclick="closePO()" style="position:absolute;top:12px;right:14px;background:none;border:none;color:var(--fog);font-size:1.3rem;cursor:pointer;line-height:1;padding:2px 6px" title="Fermer">✕</button>
+  <div class="modal-title" id="poTitle">🎉 Nouveau Pack Opening</div>
+  <div class="po-steps" id="poSteps"></div>
+  <div id="poBody"></div>
+  <div class="modal-acts">
+    <button class="btn ghost" id="poPrev" onclick="poGo(-1)" style="margin-right:auto">← Retour</button>
+    <button class="btn" id="poNext" onclick="poGo(1)">Suivant →</button>
+  </div>
+</div>
+</div>
+
 <!-- ═══ MODAL FICHE D'EXTENSION ══════════════════════════ -->
 <div class="overlay" id="modalExt">
 <div class="modal" style="max-width:480px">
   <div class="modal-title" id="extTitle">📚 Nouvelle fiche d'extension</div>
   <div class="field"><label>Nom de l'extension *</label><input type="text" id="eNom" placeholder="Ex: M2 Inferno X (JP)"/></div>
+  <div class="fields-row">
+    <div class="field"><label>Jeu</label>
+      <select id="eTcg"><option value="pokemon">🟡 Pokémon</option><option value="op">🔴 One Piece</option><option value="lorcana">🟣 Lorcana</option><option value="magic">🟠 Magic</option><option value="autre">⚪ Autre</option></select>
+    </div>
+    <div class="field"><label>Langue</label>
+      <select id="eLangue"><option value="Japonais">🇯🇵 Japonais</option><option value="Francais">🇫🇷 Français</option><option value="Anglais">🇬🇧 Anglais</option><option value="Coreen">🇰🇷 Coréen</option><option value="Chinois">🇨🇳 Chinois</option><option value="Autre">🌐 Autre</option></select>
+    </div>
+  </div>
   <div class="fields-row">
     <div class="field"><label>Boosters par display</label><input type="number" id="eBoosters" min="0" placeholder="30"/></div>
     <div class="field"><label>AR attendues / display</label><input type="number" id="eAr" min="0" step="0.5" placeholder="4"/></div>
@@ -525,8 +593,8 @@ var LNG_FL  = {Japonais:'🇯🇵',Francais:'🇫🇷',Anglais:'🇬🇧',Coreen
 var S = (function(){
   try {
     var cache = JSON.parse(localStorage.getItem(SK+'_cache')||'{}');
-    return {ouvertures: cache.ouvertures||[], amis: cache.amis||[], extensions: cache.extensions||[]};
-  } catch(e) { return {ouvertures:[], amis:[], extensions:[]}; }
+    return {ouvertures: cache.ouvertures||[], amis: cache.amis||[], extensions: cache.extensions||[], sessions: cache.sessions||[]};
+  } catch(e) { return {ouvertures:[], amis:[], extensions:[], sessions:[]}; }
 })();
 
 var curFilter = 'all';
@@ -555,6 +623,7 @@ function renderAll() {
   updateStats();
   renderTable();
   renderClassement();
+  renderSessions();
 }
 
 // ══ STATS ════════════════════════════════════════════════
@@ -694,7 +763,7 @@ function rowHTML(o, cls) {
     var totalFmt= total?total.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €':'—';
     var unitFmt = o.prix?'× '+(parseInt(o.qte)||1)+' @ '+(parseFloat(o.prix)).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €':'';
     var dropCell= o.drop&&o.drop.trim()
-      ? '<div class="drop-text">'+esc(o.drop)+'</div>'+(isHit(o.drop)?'<span class="hit-badge">💎 Hit</span>':'')
+      ? '<div class="drop-text">'+esc(o.drop)+'</div>'+(isHit(o.drop)||(o.cartes||[]).some(function(c){ return c.type!=='AR'; })?'<span class="hit-badge">💎 Hit</span>':'')
       : '<span class="drop-empty">'+(ouvert?'Aucun drop noté':'—')+'</span>';
     var sc = scoreOuverture(o);
     if (sc) dropCell += '<div>'+luckBadge(sc.pct)+(o.proprio?' <span class="drop-empty">'+esc(amiName(o.proprio))+'</span>':'')+'</div>';
@@ -776,25 +845,31 @@ function fillSelect(id, list, current, emptyLabel) {
 function addCarte() { syncCartes(); editCartes.push({nom:'', type:'AR', note:'ok', horsCota:false}); renderCartes(); }
 function removeCarte(i) { syncCartes(); editCartes.splice(i,1); renderCartes(); }
 // Relit les champs avant de redessiner, pour ne rien perdre de ce qui est tapé.
-function syncCartes() {
-  document.querySelectorAll('#mCartes .carte-row').forEach(function(row, i){
-    var c = editCartes[i]; if(!c) return;
+function syncCartes() { readCartes(document.getElementById('mCartes'), editCartes); }
+// Une ligne « carte tirée ». onChange / onDel : code JS appelé (fenêtre d'ouverture ou Pack Opening).
+function carteRowHTML(c, onChange, onDel) {
+  function opts(map, cur) { return Object.keys(map).map(function(k){ return '<option value="'+k+'"'+(k===cur?' selected':'')+'>'+map[k]+'</option>'; }).join(''); }
+  return '<div class="carte-row">'+
+    '<input type="text" class="c-nom" placeholder="Ex: Dracaufeu ex" value="'+esc(c.nom)+'" oninput="'+onChange+'"/>'+
+    '<select class="c-type" onchange="'+onChange+'">'+opts(TYPE_LBL, c.type)+'</select>'+
+    '<select class="c-note" onchange="'+onChange+'">'+opts(NOTE_LBL, c.note)+'</select>'+
+    '<label class="hc"><input type="checkbox" class="c-hc"'+(c.horsCota?' checked':'')+' onchange="'+onChange+'"/>Hors cota</label>'+
+    '<button type="button" class="icon-btn del-btn" onclick="'+onDel+'" title="Retirer">✕</button>'+
+  '</div>';
+}
+// Relit les lignes d'un conteneur dans le tableau de cartes correspondant.
+function readCartes(box, arr) {
+  box.querySelectorAll('.carte-row').forEach(function(row, i){
+    var c = arr[i]; if(!c) return;
     c.nom = row.querySelector('.c-nom').value.trim();
     c.type = row.querySelector('.c-type').value;
     c.note = row.querySelector('.c-note').value;
-    var hc = row.querySelector('.c-hc'); c.horsCota = !!(hc && hc.checked && c.type==='SAR');
+    c.horsCota = row.querySelector('.c-hc').checked;
   });
 }
 function renderCartes() {
-  var box = document.getElementById('mCartes');
-  box.innerHTML = editCartes.map(function(c, i){
-    return '<div class="carte-row">'+
-      '<input type="text" class="c-nom" placeholder="Ex: Dracaufeu ex" value="'+esc(c.nom)+'" oninput="updateScoreLive()"/>'+
-      '<select class="c-type" onchange="syncCartes();renderCartes()"><option'+(c.type==='AR'?' selected':'')+'>AR</option><option'+(c.type==='SAR'?' selected':'')+'>SAR</option></select>'+
-      '<select class="c-note" onchange="updateScoreLive()"><option value="pire"'+(c.note==='pire'?' selected':'')+'>💀 Pire</option><option value="ok"'+(c.note==='ok'?' selected':'')+'>👌 Ok</option><option value="meilleure"'+(c.note==='meilleure'?' selected':'')+'>🔥 Meilleure</option></select>'+
-      (c.type==='SAR' ? '<label class="hc"><input type="checkbox" class="c-hc"'+(c.horsCota?' checked':'')+' onchange="updateScoreLive()"/>Hors cota</label>' : '<span class="hc-empty"></span>')+
-      '<button type="button" class="icon-btn del-btn" onclick="removeCarte('+i+')" title="Retirer">✕</button>'+
-    '</div>';
+  document.getElementById('mCartes').innerHTML = editCartes.map(function(c, i){
+    return carteRowHTML(c, 'updateScoreLive()', 'removeCarte('+i+')');
   }).join('');
   updateScoreLive();
 }
@@ -909,8 +984,12 @@ function openDropEdit(id) {
 }
 
 // ══ CLASSEMENT : score de chance ═════════════════════════
-var PTS = {AR:{pire:1, ok:2, meilleure:3}, SAR:{pire:4, ok:6, meilleure:10}};
-var BONUS_HORS_COTA = 5;
+// Barème. HIT = autre hit (SR, UR, gold, IR…). Hors cota = carte en plus de ce que promet la cota.
+var PTS = {AR:{pire:1, ok:2, meilleure:3}, HIT:{pire:2, ok:3, meilleure:5}, SAR:{pire:4, ok:6, meilleure:10}};
+var BONUS_HC = {AR:2, HIT:3, SAR:5};
+var TYPE_LBL = {AR:'AR', HIT:'Autre hit', SAR:'SAR'};
+var NOTE_LBL = {pire:'💀 Pire', ok:'👌 Ok', meilleure:'🔥 Meilleure'};
+function cartePts(c) { return ((PTS[c.type]||{})[c.note]||0) + (c.horsCota ? (BONUS_HC[c.type]||0) : 0); }
 function extById(id) { return (S.extensions||[]).filter(function(e){ return e.id===id; })[0]; }
 function amiName(id) { var a=(S.amis||[]).filter(function(x){ return x.id===id; })[0]; return a ? a.name : '(ami supprimé)'; }
 // Chance d'une ouverture : points obtenus ÷ points attendus d'après la fiche d'extension. null si pas calculable.
@@ -921,7 +1000,7 @@ function scoreOuverture(o) {
   var attendu = ((parseFloat(ext.ar)||0)*PTS.AR.ok + (parseFloat(ext.sar)||0)*PTS.SAR.ok) * q;
   if (!attendu) return null;
   var pts = (o.cartes||[]).reduce(function(a,c){
-    return a + ((PTS[c.type]||{})[c.note]||0) + (c.type==='SAR'&&c.horsCota ? BONUS_HORS_COTA : 0);
+    return a + cartePts(c);
   }, 0);
   return {pts:pts, attendu:attendu, pct:Math.round(pts/attendu*100)};
 }
@@ -945,23 +1024,29 @@ function computeRanking() {
 }
 
 // ══ CLASSEMENT : affichage ═══════════════════════════════
+var MEDAL = ['🥇','🥈','🥉'];
+// Les 3 marches du podium, dans l'ordre visuel 2e · 1er · 3e. entries : [{name, pct, sub}] déjà triés.
+function podiumInner(entries) {
+  return [1,0,2].map(function(i){
+    var r = entries[i];
+    if (!r) return '<div class="pod pod-'+(i+1)+' pod-empty"><div class="pod-medal" style="opacity:.3">'+MEDAL[i]+'</div><div class="pod-sub">Place libre</div><div class="pod-step">'+(i+1)+'</div></div>';
+    return '<div class="pod pod-'+(i+1)+'">'+
+      '<div class="pod-medal">'+MEDAL[i]+'</div>'+
+      '<div class="pod-name">'+esc(r.name)+'</div>'+
+      '<div class="pod-pct">'+r.pct+' %</div>'+
+      '<div class="pod-sub">'+esc(r.sub||'')+'</div>'+
+      '<div class="pod-step">'+(i+1)+'</div>'+
+    '</div>';
+  }).join('');
+}
+
 function renderClassement() {
   var rank = computeRanking();
   var pod = document.getElementById('podium');
   if (!pod) return;
-  // Ordre visuel du podium : 2e, 1er, 3e
-  var MEDAL = ['🥇','🥈','🥉'];
-  pod.innerHTML = [1,0,2].map(function(i){
-    var r = rank[i];
-    if (!r) return '<div class="pod pod-'+(i+1)+' pod-empty"><div class="pod-medal" style="opacity:.3">'+MEDAL[i]+'</div><div class="pod-sub">Place libre</div><div class="pod-step">'+(i+1)+'</div></div>';
-    return '<div class="pod pod-'+(i+1)+'">'+
-      '<div class="pod-medal">'+MEDAL[i]+'</div>'+
-      '<div class="pod-name">'+esc(amiName(r.id))+'</div>'+
-      '<div class="pod-pct">'+r.avg+' %</div>'+
-      '<div class="pod-sub">'+r.n+' display'+(r.n>1?'s':'')+' · record '+r.best.pct+' %</div>'+
-      '<div class="pod-step">'+(i+1)+'</div>'+
-    '</div>';
-  }).join('');
+  pod.innerHTML = podiumInner(rank.map(function(r){
+    return {name:amiName(r.id), pct:r.avg, sub:r.n+' display'+(r.n>1?'s':'')+' · record '+r.best.pct+' %'};
+  }));
   var list = document.getElementById('rankList');
   list.innerHTML = rank.length
     ? rank.slice(3).map(function(r, i){
@@ -1009,6 +1094,8 @@ function openExtModal(id) {
   document.getElementById('eAr').value = e ? (e.ar||'') : '';
   document.getElementById('eSar').value = e ? (e.sar||'') : '';
   document.getElementById('eGarantie').value = e ? (e.garantie||'oui') : 'oui';
+  document.getElementById('eTcg').value = e ? (e.tcg||'pokemon') : 'pokemon';
+  document.getElementById('eLangue').value = e ? (e.langue||'Japonais') : 'Japonais';
   document.getElementById('eNotes').value = e ? (e.notes||'') : '';
   document.getElementById('modalExt').classList.add('open');
 }
@@ -1022,11 +1109,14 @@ function saveExt() {
     ar:parseFloat(document.getElementById('eAr').value)||0,
     sar:parseFloat(document.getElementById('eSar').value)||0,
     garantie:document.getElementById('eGarantie').value,
+    tcg:document.getElementById('eTcg').value,
+    langue:document.getElementById('eLangue').value,
     notes:document.getElementById('eNotes').value.trim()||null
   };
   if (extEditId) Object.assign(extById(extEditId), data);
   else { data.id = Date.now().toString(); S.extensions.push(data); }
   closeExtModal(); save(); renderAll(); showToast('Fiche enregistrée ✔','ok');
+  if (document.getElementById('modalPO').classList.contains('open')) poRender(); // fiche créée depuis le Pack Opening
 }
 function deleteExt() {
   var used = (S.ouvertures||[]).filter(function(o){ return o.extId===extEditId; }).length;
@@ -1035,10 +1125,188 @@ function deleteExt() {
   closeExtModal(); save(); renderAll();
 }
 
+// ══ PACK OPENING ═════════════════════════════════════════
+// Une session = une date + des participants. Chaque participant a son display (une ouverture
+// normale, avec sessionId) : on garde ainsi le tableau, les groupes et le classement existants.
+var W = null; // état de l'assistant en cours
+var PO_STEPS = ['1. Qui & quand', '2. Displays', '3. Drops', '4. Résultats'];
+function todayStr() { var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function sessionOuvs(sid) { return (S.ouvertures||[]).filter(function(o){ return o.sessionId===sid; }); }
+
+function openPO(sid) {
+  var s = sid ? (S.sessions||[]).filter(function(x){ return x.id===sid; })[0] : null;
+  W = {sessionId: s?s.id:null, step:1, date: s?s.date:todayStr(), nom: s?(s.nom||''):'', parts:[]};
+  if (s) W.parts = sessionOuvs(s.id).map(function(o){
+    return {amiId:o.proprio, extId:o.extId||'', name:o.name||'', prix:o.prix||'', cartes:JSON.parse(JSON.stringify(o.cartes||[])), ouvId:o.id};
+  }).sort(function(a,b){ return s.participants.indexOf(a.amiId) - s.participants.indexOf(b.amiId); });
+  document.getElementById('poTitle').textContent = s ? '✏️ Modifier le Pack Opening' : '🎉 Nouveau Pack Opening';
+  document.getElementById('modalPO').classList.add('open');
+  poRender();
+}
+function closePO(force) {
+  if (!force && W && W.parts.length && !confirm('Fermer le Pack Opening ? Ce qui n\'est pas enregistré sera perdu.')) return;
+  document.getElementById('modalPO').classList.remove('open'); W = null;
+}
+function poPart(amiId) { return W.parts.filter(function(p){ return p.amiId===amiId; })[0]; }
+function poToggleAmi(id) {
+  if (poPart(id)) W.parts = W.parts.filter(function(p){ return p.amiId!==id; });
+  else W.parts.push({amiId:id, extId:'', name:'', prix:'', cartes:[]});
+  poRender();
+}
+function poAddAmi() {
+  var inp = document.getElementById('poNewAmi'), name = inp.value.trim();
+  if (!name) return;
+  var a = (S.amis||[]).filter(function(x){ return x.name.toLowerCase()===name.toLowerCase(); })[0];
+  if (!a) { a = {id:Date.now().toString(), name:name}; S.amis.push(a); save(); renderClassement(); }
+  if (!poPart(a.id)) W.parts.push({amiId:a.id, extId:'', name:'', prix:'', cartes:[]});
+  poRender();
+}
+function poSetExt(i, extId) {
+  var p = W.parts[i], old = extById(p.extId), e = extById(extId);
+  // Le nom du display suit la fiche tant qu'on ne l'a pas changé à la main.
+  if (!p.name || (old && p.name===old.nom)) p.name = e ? e.nom : '';
+  p.extId = extId; poRender();
+}
+function poAddCarte(i, type) { poSync(i); W.parts[i].cartes.push({nom:'', type:type, note:'ok', horsCota:false}); poRender(); }
+function poDelCarte(i, j) { poSync(i); W.parts[i].cartes.splice(j,1); poRender(); }
+function poScore(p) { return scoreOuverture({statut:'ouvert', extId:p.extId, cartes:p.cartes, qte:1}); }
+function poSync(i) {
+  var box = document.getElementById('poCartes_'+i);
+  if (box) readCartes(box, W.parts[i].cartes);
+  var el = document.getElementById('poScore_'+i), sc = poScore(W.parts[i]);
+  if (el) el.innerHTML = sc ? sc.pts+' / '+sc.attendu+' pts '+luckBadge(sc.pct) : '<span class="drop-empty">pas de cota</span>';
+}
+function poGo(d) {
+  if (W.step===3) W.parts.forEach(function(p,i){ poSync(i); });
+  if (d>0) {
+    if (W.step===1 && (!W.date || !W.parts.length)) { showToast('Choisis la date et au moins une personne','err'); return; }
+    if (W.step===2 && W.parts.some(function(p){ return !p.extId; })) { showToast('Choisis une fiche d\'extension pour chacun','err'); return; }
+    if (W.step===4) { poSave(); return; }
+  }
+  W.step = Math.max(1, Math.min(4, W.step+d));
+  poRender();
+}
+function poRender() {
+  if (!W) return;
+  document.getElementById('poSteps').innerHTML = PO_STEPS.map(function(l,i){
+    return '<span class="po-step'+(i+1===W.step?' on':i+1<W.step?' done':'')+'">'+l+'</span>';
+  }).join('');
+  document.getElementById('poPrev').style.visibility = W.step>1 ? 'visible' : 'hidden';
+  document.getElementById('poNext').textContent = W.step===3 ? 'Voir les résultats →' : W.step===4 ? '💾 Enregistrer' : 'Suivant →';
+  var b = document.getElementById('poBody');
+
+  if (W.step===1) {
+    b.innerHTML =
+      '<div class="fields-row">'+
+        '<div class="field"><label>Date</label><input type="date" value="'+esc(W.date)+'" oninput="W.date=this.value"/></div>'+
+        '<div class="field"><label>Nom (optionnel)</label><input type="text" value="'+esc(W.nom)+'" placeholder="Ex: Soirée chez Nathan" oninput="W.nom=this.value"/></div>'+
+      '</div>'+
+      '<div class="field"><label>Qui ouvre ?</label><div class="pick-chips">'+
+        ((S.amis||[]).length ? S.amis.map(function(a){ var on=!!poPart(a.id);
+          return '<label class="pick-chip'+(on?' on':'')+'"><input type="checkbox"'+(on?' checked':'')+' onchange="poToggleAmi(\''+a.id+'\')"/>'+esc(a.name)+'</label>'; }).join('')
+          : '<span class="drop-empty">Aucun ami enregistré : ajoute-les ci-dessous.</span>')+
+      '</div></div>'+
+      '<div class="inline-add"><input type="text" id="poNewAmi" placeholder="Ajouter une personne" onkeydown="if(event.key===\'Enter\')poAddAmi()"/><button class="btn sm" type="button" onclick="poAddAmi()">+ Ajouter</button></div>';
+  }
+
+  if (W.step===2) {
+    var fiches = S.extensions||[];
+    b.innerHTML = '<p class="hint" style="font-size:.82rem;color:var(--mist);margin-bottom:12px">Le display ouvert par chacun. La fiche d\'extension donne les cotas.</p>'+
+      W.parts.map(function(p,i){
+        return '<div class="po-card"><div class="po-card-head"><span class="po-who">'+esc(amiName(p.amiId))+'</span></div><div class="po-grid">'+
+          '<div class="field" style="margin:0"><label>Fiche d\'extension</label><select onchange="poSetExt('+i+',this.value)"><option value="">— Choisir —</option>'+
+            fiches.map(function(e){ return '<option value="'+esc(e.id)+'"'+(e.id===p.extId?' selected':'')+'>'+esc(e.nom)+'</option>'; }).join('')+'</select></div>'+
+          '<div class="field" style="margin:0"><label>Nom du display</label><input type="text" value="'+esc(p.name)+'" oninput="W.parts['+i+'].name=this.value"/></div>'+
+          '<div class="field" style="margin:0"><label>Prix (€)</label><input type="number" step="0.01" min="0" value="'+esc(p.prix)+'" oninput="W.parts['+i+'].prix=this.value"/></div>'+
+        '</div></div>';
+      }).join('')+
+      '<button class="btn ghost sm" type="button" onclick="openExtModal()">📚 + Nouvelle fiche d\'extension</button>';
+  }
+
+  if (W.step===3) {
+    b.innerHTML = '<p style="font-size:.82rem;color:var(--mist);margin-bottom:12px">Chaque hit tiré : son type, si c\'était le pire, un ok ou le meilleur possible, et s\'il est <b>hors cota</b> (en plus de ce que la cota promet).</p>'+
+      W.parts.map(function(p,i){
+        var e = extById(p.extId)||{};
+        return '<div class="po-card"><div class="po-card-head"><span><span class="po-who">'+esc(amiName(p.amiId))+'</span> <span class="drop-empty">'+esc(p.name)+' · cota : '+(e.ar||0)+' AR, '+(e.sar||0)+' SAR'+(e.garantie==='oui'?' (garantie)':'')+'</span></span><span id="poScore_'+i+'"></span></div>'+
+          '<div id="poCartes_'+i+'">'+p.cartes.map(function(c,j){ return carteRowHTML(c, 'poSync('+i+')', 'poDelCarte('+i+','+j+')'); }).join('')+'</div>'+
+          '<div class="po-quick"><button class="btn ghost sm" type="button" onclick="poAddCarte('+i+',\'AR\')">+ AR</button><button class="btn ghost sm" type="button" onclick="poAddCarte('+i+',\'HIT\')">+ Autre hit</button><button class="btn ghost sm" type="button" onclick="poAddCarte('+i+',\'SAR\')">+ SAR</button></div>'+
+        '</div>';
+      }).join('');
+    W.parts.forEach(function(p,i){ poSync(i); });
+  }
+
+  if (W.step===4) {
+    var res = W.parts.map(function(p){ var sc=poScore(p); return {p:p, pct:sc?sc.pct:0, sc:sc}; })
+      .sort(function(a,b){ return b.pct-a.pct; });
+    b.innerHTML = '<div class="podium mini">'+podiumInner(res.map(function(r){
+        return {name:amiName(r.p.amiId), pct:r.pct, sub:r.p.name};
+      }))+'</div>'+
+      res.map(function(r,k){
+        return '<div class="sess-row"><span class="sess-medal">'+(MEDAL[k]||'#'+(k+1))+'</span><span class="sess-name">'+esc(amiName(r.p.amiId))+'</span>'+
+          '<span class="sess-disp">'+esc(r.p.name)+(r.sc?' · '+r.sc.pts+' / '+r.sc.attendu+' pts':'')+'</span>'+luckBadge(r.pct)+
+          '<div class="sess-cards">'+(esc(cartesResume(r.p.cartes))||'Aucun hit noté')+'</div></div>';
+      }).join('');
+  }
+}
+function cartesResume(cartes) {
+  return (cartes||[]).map(function(c){
+    return (c.nom||'?')+' ('+TYPE_LBL[c.type]+' '+(NOTE_LBL[c.note]||'').split(' ')[0]+(c.horsCota?' hors cota':'')+')';
+  }).join(', ');
+}
+function poSave() {
+  var sid = W.sessionId || Date.now().toString();
+  var ids = W.parts.map(function(p){ return p.amiId; });
+  // Participant retiré pendant la modification : on retire aussi son display de la session.
+  var keep = W.parts.map(function(p){ return p.ouvId; }).filter(Boolean);
+  S.ouvertures = S.ouvertures.filter(function(o){ return o.sessionId!==sid || keep.indexOf(o.id)>-1; });
+  W.parts.forEach(function(p, k){
+    var e = extById(p.extId)||{};
+    var o = p.ouvId ? S.ouvertures.filter(function(x){ return x.id===p.ouvId; })[0] : null;
+    var data = {name:p.name||e.nom||'Display', format:'Display', tcg:e.tcg||'pokemon', langue:e.langue||'Japonais',
+      statut:'ouvert', prix:parseFloat(p.prix)||null, qte:1, date:W.date, dateOuverture:W.date,
+      proprio:p.amiId, presents:ids, extId:p.extId, cartes:p.cartes, sessionId:sid, updatedAt:Date.now()};
+    if (p.cartes.length || !o) data.drop = cartesResume(p.cartes) || null;
+    if (o) Object.assign(o, data);
+    else { data.id = (Date.now()+k).toString(); data.createdAt = Date.now(); S.ouvertures.unshift(data); }
+  });
+  var sess = {id:sid, date:W.date, nom:W.nom.trim(), participants:ids};
+  S.sessions = (S.sessions||[]).filter(function(x){ return x.id!==sid; }).concat([sess]);
+  closePO(true); save(); renderAll(); navTo('sessions');
+  showToast('Pack Opening enregistré ✔','ok');
+}
+function deleteSession(sid) {
+  var n = sessionOuvs(sid).length;
+  if (!confirm('Supprimer ce Pack Opening et ses '+n+' display(s) ?')) return;
+  S.sessions = S.sessions.filter(function(x){ return x.id!==sid; });
+  S.ouvertures = S.ouvertures.filter(function(o){ return o.sessionId!==sid; });
+  save(); renderAll(); showToast('Supprimé','ok');
+}
+function renderSessions() {
+  var el = document.getElementById('sessionsList');
+  if (!el) return;
+  var list = (S.sessions||[]).slice().sort(function(a,b){ return (b.date||'').localeCompare(a.date||''); });
+  if (!list.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-ico">🎉</div><h3>Aucun Pack Opening</h3><p>Lance une session : qui ouvre, le display de chacun, les drops… et le site calcule qui a eu le plus de chance.</p><button class="btn" onclick="openPO()">🎉 Nouveau Pack Opening</button></div>';
+    return;
+  }
+  el.innerHTML = list.map(function(s){
+    var res = sessionOuvs(s.id).map(function(o){ var sc=scoreOuverture(o); return {o:o, pct:sc?sc.pct:0, sc:sc}; })
+      .sort(function(a,b){ return b.pct-a.pct; });
+    return '<div class="sess-card"><div class="sess-head"><div><div class="sess-title">'+esc(s.nom||'Pack Opening')+'</div><div class="sess-date">📅 '+esc(s.date||'')+' · '+res.length+' display'+(res.length>1?'s':'')+'</div></div>'+
+      '<div style="display:flex;gap:6px"><button class="icon-btn" onclick="openPO(\''+s.id+'\')" title="Modifier">✏️</button><button class="icon-btn del-btn" onclick="deleteSession(\''+s.id+'\')" title="Supprimer">🗑</button></div></div>'+
+      res.map(function(r,k){
+        return '<div class="sess-row"><span class="sess-medal">'+(MEDAL[k]||'#'+(k+1))+'</span><span class="sess-name">'+esc(amiName(r.o.proprio))+'</span>'+
+          '<span class="sess-disp">'+esc(r.o.name)+(r.sc?' · '+r.sc.pts+' / '+r.sc.attendu+' pts':'')+'</span>'+(r.sc?luckBadge(r.pct):'')+
+          '<div class="sess-cards">'+(esc(cartesResume(r.o.cartes))||'Aucun hit noté')+'</div></div>';
+      }).join('')+
+    '</div>';
+  }).join('');
+}
+
 // ══ SAVE ══════════════════════════════════════════════════
 var _savePending=null, _saveInFlight=false;
 function save() {
-  var payload={ouvertures:S.ouvertures||[], amis:S.amis||[], extensions:S.extensions||[]};
+  var payload={ouvertures:S.ouvertures||[], amis:S.amis||[], extensions:S.extensions||[], sessions:S.sessions||[]};
   try{localStorage.setItem(SK+'_cache',JSON.stringify(payload));}catch(e){}
   if(!window._uid||!window._setDoc||!window._doc||!window._db) return;
   _savePending=payload;
