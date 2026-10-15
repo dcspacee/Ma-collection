@@ -1,10 +1,19 @@
 rules_version = '2';
 // À copier dans la console Firebase → Firestore Database → Règles, puis « Publier ».
-// Chaque utilisateur ne peut lire et écrire que son propre document.
+// Chaque utilisateur ne peut lire et écrire que son propre document,
+// et seulement dans les collections que le site utilise. Tout le reste est refusé.
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{collection}/{uid} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+    function estProprio(userId) {
+      return request.auth != null && request.auth.uid == userId;
     }
+
+    match /collections/{userId} { allow read, write: if estProprio(userId); }  // Mes Investissements
+    match /items_v1/{userId}    { allow read, write: if estProprio(userId); }  // Mes Items
+    match /wishlist_v1/{userId} { allow read, write: if estProprio(userId); }  // Wishlist
+    match /binders_v2/{userId}  { allow read, write: if estProprio(userId); }  // Classeurs + Ouvertures
+
+    // Ancien Yonko Binder (abandonné) : lecture seule, pour pouvoir récupérer les données si besoin.
+    match /op_binders/{userId}  { allow read: if estProprio(userId); }
   }
 }
