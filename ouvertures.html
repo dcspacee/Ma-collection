@@ -411,15 +411,15 @@ select option{background:var(--s2);}
   <div class="rank-section">
     <h3>📚 Fiches d'extension (cotas)</h3>
     <p class="hint">Remplies une fois par extension, puis reprises par chaque ouverture. Elles servent à calculer ce qu'un display « devrait » donner.</p>
-    <div class="table-wrap" style="margin-bottom:12px"><table class="ext-table"><thead><tr><th>Extension</th><th>Boosters</th><th>AR attendues</th><th>SAR attendues</th><th>SAR garantie</th><th></th></tr></thead><tbody id="extList"></tbody></table></div>
+    <div class="table-wrap" style="margin-bottom:12px"><table class="ext-table"><thead><tr><th>Extension</th><th>Boosters</th><th>AR</th><th>SR</th><th>SAR</th><th></th></tr></thead><tbody id="extList"></tbody></table></div>
     <button class="btn sm" onclick="openExtModal()">+ Nouvelle fiche</button>
   </div>
 
   <div class="rank-section">
     <h3>🧮 Comment on calcule</h3>
-    <p class="hint" style="margin-bottom:0">Chaque carte rapporte des points : <b>AR</b> pire 1 · ok 2 · meilleure 3 — <b>Autre hit</b> (SR, UR, gold…) pire 2 · ok 3 · meilleure 5 — <b>SAR</b> pire 4 · ok 6 · meilleure 10.<br>
-    Bonus <b>hors cota</b> (carte en plus de ce que promet la cota) : AR +2 · autre hit +3 · SAR +5.<br>
-    Points attendus d'un display = AR attendues × 2 + SAR attendues × 6. Chance = points obtenus ÷ points attendus.<br>
+    <p class="hint" style="margin-bottom:0">Quand tu choisis une fiche, les cartes <b>garanties</b> (AR, SR, SAR) s'ajoutent toutes seules : tu dis juste si chacune est la <b>pire</b>, un <b>ok</b> ou la <b>meilleure</b>. Les cartes en plus sont <b>hors cota</b>.<br>
+    Points : <b>AR</b> pire 1 · ok 2 · meilleure 3 — <b>SR</b> pire 2 · ok 3 · meilleure 5 — <b>SAR</b> pire 4 · ok 6 · meilleure 10. Hors cota : ses points + bonus (AR +2 · SR +3 · SAR +5).<br>
+    100 % = toutes les garanties « ok » et aucun hors cota. Chance = points obtenus ÷ points des garanties en « ok ».<br>
     Le classement fait la moyenne des chances de chaque propriétaire, sur ses displays <b>ouverts</b> qui ont une fiche d'extension.</p>
   </div>
 </div>
@@ -496,7 +496,7 @@ select option{background:var(--s2);}
     <div class="lux-title">🏆 Pour le classement</div>
     <div class="fields-row">
       <div class="field"><label>Propriétaire</label><select id="mProprio"></select></div>
-      <div class="field"><label>Fiche d'extension</label><select id="mExt" onchange="renderCartes()"></select></div>
+      <div class="field"><label>Fiche d'extension</label><select id="mExt" onchange="onExtChange()"></select></div>
     </div>
     <div class="field"><label>Personnes présentes</label><div class="pick-chips" id="mPresents"></div></div>
     <div class="field"><label>Cartes tirées</label>
@@ -562,13 +562,11 @@ select option{background:var(--s2);}
   </div>
   <div class="fields-row">
     <div class="field"><label>Boosters par display</label><input type="number" id="eBoosters" min="0" placeholder="30"/></div>
-    <div class="field"><label>AR attendues / display</label><input type="number" id="eAr" min="0" step="0.5" placeholder="4"/></div>
+    <div class="field"><label>AR garanties / display</label><input type="number" id="eAr" min="0" step="1" placeholder="3"/></div>
   </div>
   <div class="fields-row">
-    <div class="field"><label>SAR attendues / display</label><input type="number" id="eSar" min="0" step="0.5" placeholder="1"/></div>
-    <div class="field"><label>SAR garantie ?</label>
-      <select id="eGarantie"><option value="oui">✅ Oui</option><option value="non">❌ Non</option></select>
-    </div>
+    <div class="field"><label>SR garanties / display</label><input type="number" id="eSr" min="0" step="1" placeholder="0"/></div>
+    <div class="field"><label>SAR garanties / display</label><input type="number" id="eSar" min="0" step="1" placeholder="1"/></div>
   </div>
   <div class="field"><label>Notes</label><input type="text" id="eNotes" placeholder="Ex: 1 SAR ou SR garantie, ~1 AR / 7 boosters"/></div>
   <div class="modal-acts">
@@ -619,6 +617,9 @@ function navTo(view) {
 }
 
 // ══ RENDER ALL ═══════════════════════════════════════════
+// Les displays d'un Pack Opening ont leur propre onglet : on les garde hors de la liste Ouvertures.
+function horsSession() { return (S.ouvertures||[]).filter(function(o){ return !o.sessionId; }); }
+
 function renderAll() {
   updateStats();
   renderTable();
@@ -628,7 +629,7 @@ function renderAll() {
 
 // ══ STATS ════════════════════════════════════════════════
 function updateStats() {
-  var all  = S.ouvertures||[];
+  var all  = horsSession();
   var scel = all.filter(function(o){ return o.statut!=='ouvert'; });
   var ouv  = all.filter(function(o){ return o.statut==='ouvert'; });
   var scelQte = scel.reduce(function(a,o){ return a+(parseInt(o.qte)||1); }, 0);
@@ -656,7 +657,7 @@ function updateStats() {
 function renderTable() {
   var q    = (document.getElementById('searchInput')||{}).value||'';
   var qlo  = q.toLowerCase();
-  var list = (S.ouvertures||[]).slice();
+  var list = horsSession();
 
   // Filtre statut
   if (curFilter==='attente') list=list.filter(function(o){ return o.statut!=='ouvert'; });
@@ -842,7 +843,17 @@ function fillSelect(id, list, current, emptyLabel) {
   document.getElementById(id).innerHTML = '<option value="">'+emptyLabel+'</option>' +
     (list||[]).map(function(x){ return '<option value="'+esc(x.id)+'"'+(x.id===current?' selected':'')+'>'+esc(x.name)+'</option>'; }).join('');
 }
-function addCarte() { syncCartes(); editCartes.push({nom:'', type:'AR', note:'ok', horsCota:false}); renderCartes(); }
+function addCarte() { syncCartes(); editCartes.push({nom:'', type:'AR', note:'ok', horsCota:true}); renderCartes(); }
+// Les cartes garanties par la fiche (à noter pire / ok / meilleure) + les hors cota déjà saisis.
+function cotaCartes(ext) {
+  var out = [];
+  [['AR','ar'],['HIT','sr'],['SAR','sar']].forEach(function(t){
+    for (var k=0; k<Math.floor(parseFloat((ext||{})[t[1]])||0); k++) out.push({nom:'', type:t[0], note:'ok', horsCota:false});
+  });
+  return out;
+}
+function withCota(ext, cartes) { return cotaCartes(ext).concat((cartes||[]).filter(function(c){ return c.horsCota; })); }
+function onExtChange() { syncCartes(); editCartes = withCota(extById(document.getElementById('mExt').value), editCartes); renderCartes(); }
 function removeCarte(i) { syncCartes(); editCartes.splice(i,1); renderCartes(); }
 // Relit les champs avant de redessiner, pour ne rien perdre de ce qui est tapé.
 function syncCartes() { readCartes(document.getElementById('mCartes'), editCartes); }
@@ -879,7 +890,7 @@ function updateScoreLive() {
   var sc = scoreOuverture(fake);
   var el = document.getElementById('mScore');
   if (!fake.extId) el.textContent = 'Choisis une fiche d\'extension pour calculer la chance.';
-  else if (!sc) el.textContent = 'La fiche n\'a pas d\'AR ni de SAR attendues : impossible de calculer.';
+  else if (!sc) el.textContent = 'La fiche n\'a pas d\'AR ni de SAR attendues : impossible de calculer (aucune carte garantie).';
   else el.innerHTML = sc.pts+' pts sur '+sc.attendu+' attendus → '+luckBadge(sc.pct)+(document.getElementById('mStatut').value!=='ouvert'?' (compté une fois le display ouvert)':'');
 }
 function closeModal() { document.getElementById('modalMain').classList.remove('open'); }
@@ -987,7 +998,7 @@ function openDropEdit(id) {
 // Barème. HIT = autre hit (SR, UR, gold, IR…). Hors cota = carte en plus de ce que promet la cota.
 var PTS = {AR:{pire:1, ok:2, meilleure:3}, HIT:{pire:2, ok:3, meilleure:5}, SAR:{pire:4, ok:6, meilleure:10}};
 var BONUS_HC = {AR:2, HIT:3, SAR:5};
-var TYPE_LBL = {AR:'AR', HIT:'Autre hit', SAR:'SAR'};
+var TYPE_LBL = {AR:'AR', HIT:'SR', SAR:'SAR'};
 var NOTE_LBL = {pire:'💀 Pire', ok:'👌 Ok', meilleure:'🔥 Meilleure'};
 function cartePts(c) { return ((PTS[c.type]||{})[c.note]||0) + (c.horsCota ? (BONUS_HC[c.type]||0) : 0); }
 function extById(id) { return (S.extensions||[]).filter(function(e){ return e.id===id; })[0]; }
@@ -997,7 +1008,7 @@ function scoreOuverture(o) {
   var ext = extById(o.extId);
   if (!ext || o.statut!=='ouvert') return null;
   var q = parseInt(o.qte)||1;
-  var attendu = ((parseFloat(ext.ar)||0)*PTS.AR.ok + (parseFloat(ext.sar)||0)*PTS.SAR.ok) * q;
+  var attendu = ((parseFloat(ext.ar)||0)*PTS.AR.ok + (parseFloat(ext.sr)||0)*PTS.HIT.ok + (parseFloat(ext.sar)||0)*PTS.SAR.ok) * q;
   if (!attendu) return null;
   var pts = (o.cartes||[]).reduce(function(a,c){
     return a + cartePts(c);
@@ -1061,7 +1072,7 @@ function renderClassement() {
 
   document.getElementById('extList').innerHTML = (S.extensions||[]).length
     ? S.extensions.map(function(e){
-        return '<tr><td><b>'+esc(e.nom)+'</b>'+(e.notes?'<div class="name-sub">'+esc(e.notes)+'</div>':'')+'</td><td>'+(e.boosters||'—')+'</td><td>'+(e.ar||0)+'</td><td>'+(e.sar||0)+'</td><td>'+(e.garantie==='oui'?'✅':'❌')+'</td>'+
+        return '<tr><td><b>'+esc(e.nom)+'</b>'+(e.notes?'<div class="name-sub">'+esc(e.notes)+'</div>':'')+'</td><td>'+(e.boosters||'—')+'</td><td>'+(e.ar||0)+'</td><td>'+(e.sr||0)+'</td><td>'+(e.sar||0)+'</td>'+
           '<td><button class="icon-btn" onclick="openExtModal(\''+e.id+'\')" title="Modifier">✏️</button></td></tr>';
       }).join('')
     : '<tr><td colspan="6" class="drop-empty">Aucune fiche pour l\'instant.</td></tr>';
@@ -1093,7 +1104,7 @@ function openExtModal(id) {
   document.getElementById('eBoosters').value = e ? (e.boosters||'') : '';
   document.getElementById('eAr').value = e ? (e.ar||'') : '';
   document.getElementById('eSar').value = e ? (e.sar||'') : '';
-  document.getElementById('eGarantie').value = e ? (e.garantie||'oui') : 'oui';
+  document.getElementById('eSr').value = e ? (e.sr||'') : '';
   document.getElementById('eTcg').value = e ? (e.tcg||'pokemon') : 'pokemon';
   document.getElementById('eLangue').value = e ? (e.langue||'Japonais') : 'Japonais';
   document.getElementById('eNotes').value = e ? (e.notes||'') : '';
@@ -1108,7 +1119,7 @@ function saveExt() {
     boosters:parseInt(document.getElementById('eBoosters').value)||null,
     ar:parseFloat(document.getElementById('eAr').value)||0,
     sar:parseFloat(document.getElementById('eSar').value)||0,
-    garantie:document.getElementById('eGarantie').value,
+    sr:parseFloat(document.getElementById('eSr').value)||0,
     tcg:document.getElementById('eTcg').value,
     langue:document.getElementById('eLangue').value,
     notes:document.getElementById('eNotes').value.trim()||null
@@ -1165,9 +1176,10 @@ function poSetExt(i, extId) {
   var p = W.parts[i], old = extById(p.extId), e = extById(extId);
   // Le nom du display suit la fiche tant qu'on ne l'a pas changé à la main.
   if (!p.name || (old && p.name===old.nom)) p.name = e ? e.nom : '';
+  if (extId !== p.extId) p.cartes = withCota(e, p.cartes); // cartes garanties ajoutées d'office
   p.extId = extId; poRender();
 }
-function poAddCarte(i, type) { poSync(i); W.parts[i].cartes.push({nom:'', type:type, note:'ok', horsCota:false}); poRender(); }
+function poAddCarte(i, type) { poSync(i); W.parts[i].cartes.push({nom:'', type:type, note:'ok', horsCota:true}); poRender(); }
 function poDelCarte(i, j) { poSync(i); W.parts[i].cartes.splice(j,1); poRender(); }
 function poScore(p) { return scoreOuverture({statut:'ouvert', extId:p.extId, cartes:p.cartes, qte:1}); }
 function poSync(i) {
@@ -1224,12 +1236,12 @@ function poRender() {
   }
 
   if (W.step===3) {
-    b.innerHTML = '<p style="font-size:.82rem;color:var(--mist);margin-bottom:12px">Chaque hit tiré : son type, si c\'était le pire, un ok ou le meilleur possible, et s\'il est <b>hors cota</b> (en plus de ce que la cota promet).</p>'+
+    b.innerHTML = '<p style="font-size:.82rem;color:var(--mist);margin-bottom:12px">Les cartes garanties sont déjà là : note-les 💀 pire, 👌 ok ou 🔥 meilleure. Ajoute avec les boutons ce qui est tombé <b>en plus</b> (hors cota).</p>'+
       W.parts.map(function(p,i){
         var e = extById(p.extId)||{};
-        return '<div class="po-card"><div class="po-card-head"><span><span class="po-who">'+esc(amiName(p.amiId))+'</span> <span class="drop-empty">'+esc(p.name)+' · cota : '+(e.ar||0)+' AR, '+(e.sar||0)+' SAR'+(e.garantie==='oui'?' (garantie)':'')+'</span></span><span id="poScore_'+i+'"></span></div>'+
+        return '<div class="po-card"><div class="po-card-head"><span><span class="po-who">'+esc(amiName(p.amiId))+'</span> <span class="drop-empty">'+esc(p.name)+' · garanti : '+(e.ar||0)+' AR, '+(e.sr||0)+' SR, '+(e.sar||0)+' SAR · ajoute en plus les hors cota'+'</span></span><span id="poScore_'+i+'"></span></div>'+
           '<div id="poCartes_'+i+'">'+p.cartes.map(function(c,j){ return carteRowHTML(c, 'poSync('+i+')', 'poDelCarte('+i+','+j+')'); }).join('')+'</div>'+
-          '<div class="po-quick"><button class="btn ghost sm" type="button" onclick="poAddCarte('+i+',\'AR\')">+ AR</button><button class="btn ghost sm" type="button" onclick="poAddCarte('+i+',\'HIT\')">+ Autre hit</button><button class="btn ghost sm" type="button" onclick="poAddCarte('+i+',\'SAR\')">+ SAR</button></div>'+
+          '<div class="po-quick"><button class="btn ghost sm" type="button" onclick="poAddCarte('+i+',\'AR\')">+ AR</button><button class="btn ghost sm" type="button" onclick="poAddCarte('+i+',\'HIT\')">+ SR</button><button class="btn ghost sm" type="button" onclick="poAddCarte('+i+',\'SAR\')">+ SAR</button></div>'+
         '</div>';
       }).join('');
     W.parts.forEach(function(p,i){ poSync(i); });
@@ -1250,7 +1262,8 @@ function poRender() {
 }
 function cartesResume(cartes) {
   return (cartes||[]).map(function(c){
-    return (c.nom||'?')+' ('+TYPE_LBL[c.type]+' '+(NOTE_LBL[c.note]||'').split(' ')[0]+(c.horsCota?' hors cota':'')+')';
+    var tag = TYPE_LBL[c.type]+' '+(NOTE_LBL[c.note]||'').split(' ')[0]+(c.horsCota?' hors cota':'');
+    return c.nom ? c.nom+' ('+tag+')' : tag;
   }).join(', ');
 }
 function poSave() {
@@ -1294,6 +1307,7 @@ function renderSessions() {
       .sort(function(a,b){ return b.pct-a.pct; });
     return '<div class="sess-card"><div class="sess-head"><div><div class="sess-title">'+esc(s.nom||'Pack Opening')+'</div><div class="sess-date">📅 '+esc(s.date||'')+' · '+res.length+' display'+(res.length>1?'s':'')+'</div></div>'+
       '<div style="display:flex;gap:6px"><button class="icon-btn" onclick="openPO(\''+s.id+'\')" title="Modifier">✏️</button><button class="icon-btn del-btn" onclick="deleteSession(\''+s.id+'\')" title="Supprimer">🗑</button></div></div>'+
+      (res.length>1 ? '<div class="podium mini">'+podiumInner(res.map(function(r){ return {name:amiName(r.o.proprio), pct:r.pct, sub:r.o.name}; }))+'</div>' : '')+
       res.map(function(r,k){
         return '<div class="sess-row"><span class="sess-medal">'+(MEDAL[k]||'#'+(k+1))+'</span><span class="sess-name">'+esc(amiName(r.o.proprio))+'</span>'+
           '<span class="sess-disp">'+esc(r.o.name)+(r.sc?' · '+r.sc.pts+' / '+r.sc.attendu+' pts':'')+'</span>'+(r.sc?luckBadge(r.pct):'')+
